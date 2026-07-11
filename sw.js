@@ -5,10 +5,10 @@ const APP_SHELL = [
   "./style.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./assets/banner-poncho-marcaton.png",
-  "./assets/poncho-azul.png",
-  "./assets/poncho-dorado.png",
-  "./assets/logo-bna.png"
+  "./banner-poncho-marcaton.png",
+  "./poncho-azul.png",
+  "./poncho-dorado.png",
+  "./logo-bna.png"
 ];
 
 self.addEventListener("install", (event) =>

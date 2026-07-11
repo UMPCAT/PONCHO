@@ -1,142 +1,182 @@
-# PONCHO 2026 · versión corregida para GitHub Pages + Google Apps Script
 
-## Qué estaba fallando
-
-El repositorio publicado tiene `index.html`, `style.css` y `app.js` en la **raíz**, pero el HTML buscaba los recursos en `css/style.css` y `js/app.js`. Por eso GitHub Pages devolvía los errores 404 y la página aparecía sin diseño ni funcionamiento.
-
-Esta versión usa rutas coherentes con la estructura actual:
-
-```text
-PONCHO/
-├── index.html
-├── style.css
-├── app.js
-├── manifest.webmanifest
-├── sw.js
-├── Code.gs
-└── README.md
-```
-
-## Publicación rápida
-
-1. Reemplazá en GitHub los archivos actuales por los de esta carpeta, todos en la raíz del repositorio.
-2. En **Settings → Pages**, seleccioná `Deploy from a branch`, rama `main`, carpeta `/(root)`.
-3. Confirmá que la URL siga siendo `https://umpcat.github.io/PONCHO/`.
-
-## Preparar Google Sheets
-
-El backend usa dos planillas:
-
-- **PONCHO 2026**: Usuarios y registros de Personas.
-- **MARCATÓN AL PONCHO 2026**: listado y gestión de Comercios.
-
-### Planilla principal PONCHO 2026
-
-Abrí la planilla principal y entrá en **Extensiones → Apps Script**. Pegá el contenido completo de `Code.gs`.
-
-En la parte superior reemplazá:
-
-```javascript
-const SHEET_ID_COMERCIOS = "PEGAR_AQUI_EL_ID_DE_LA_PLANILLA_DE_COMERCIOS";
-```
-
-por el ID real de la planilla de comercios.
-
-Después ejecutá manualmente una sola vez la función:
-
-```javascript
-prepararEstructura
-```
-
-Esto crea o completa estas pestañas y encabezados:
-
-- `Usuarios`: Legajo, Apellido y Nombre, Sucursal, Fecha, Hora.
-- `AltaTarjeta`
-- `HabilitacionTC`
-- `ActivacionTC`
-- `ElegiMas`
-- `Prestamos`
-- `Seguros`
-- `AppBNA`
-
-### Planilla de comercios
-
-El archivo de Google Sheets debe ser **`EL MARCATÓN AL PONCHO 2026 (Respuestas)`**. El código ya está adaptado a estos encabezados exactos:
-
-```text
-Marca temporal
-Dirección de correo electrónico
-RUBRO
-RAZÓN SOCIAL - Apellido y Nombre (Persona Física) / Denominación (Persona Jurídica)
-NOMBRE FANTASIA DEL EMPRENDIMIENTO Y/O COMERCIO
-CUIT/CUIL
-TELÉFONO - SOLO NUMEROS
-SECTOR
-'+Pagos Nación
-PromoAceptada
-Senalizado
-AgenteRegistro
-FechaActualizacion
-HoraActualizacion
-```
-
-No es necesario renombrar la pestaña interna: `Code.gs` la detecta automáticamente por los encabezados `CUIT/CUIL`, Razón Social y `PromoAceptada`. La búsqueda admite CUIT/CUIL, razón social y nombre de fantasía. En los resultados también muestra rubro, sector y situación de `+Pagos Nación`.
-
-Las últimas cinco columnas se actualizan desde la aplicación:
-
-```text
-PromoAceptada | Senalizado | AgenteRegistro | FechaActualizacion | HoraActualizacion
-```
-
-No modifiques los títulos de esas columnas ni agregues espacios al principio o al final.
-
-## Implementar Apps Script
-
-1. En Apps Script: **Implementar → Nueva implementación**.
-2. Tipo: **Aplicación web**.
-3. Ejecutar como: **Yo**.
-4. Acceso: **Cualquier usuario**.
-5. Copiá la URL que termina en `/exec`.
-
-En `index.html`, reemplazá:
-
-```javascript
-window.APPS_SCRIPT_URL = "PEGAR_AQUI_LA_URL_DE_APPS_SCRIPT";
-```
-
-por la URL `/exec` y hacé commit.
-
-Cada vez que modifiques `Code.gs`, publicá una **nueva versión** desde “Gestionar implementaciones”.
-
-## Prueba mínima
-
-Probá en este orden:
-
-1. Abrir la web y verificar que tenga diseño.
-2. Registrar un agente.
-3. Buscar un comercio por CUIT o razón social.
-4. Marcar Promo y Señalizado y verificar las columnas en Sheets.
-5. Registrar una acción de Personas.
-6. Abrir Dashboard y comprobar que los KPI y gráficos se actualicen.
-
-## Mejoras incluidas
-
-- Corrección definitiva de las rutas 404.
-- Diseño responsive para celular y computadora.
-- Registro de sucursal y cambio de agente.
-- Validación de DNI, legajo, monto y campos obligatorios.
-- Prevención de doble canje por DNI o voucher.
-- Dashboard con fechas ordenadas correctamente.
-- Estado de comercios sin duplicar categorías.
-- Escape de contenido proveniente de Sheets para reducir riesgos de inyección.
-- Bloqueo de escrituras simultáneas mediante `LockService`.
-- Botones con estado de carga y mensajes de error más claros.
-- PWA básica para agregar la app a la pantalla de inicio.
-
-## Actualización visual v3
-
-- Se incorporó el logo BNA provisto.
-- Se incorporaron las piezas visuales de PONCHO 2026 y El Marcatón.
-- Se agregaron las opciones `Medios de Pago` y `Otros` en Sucursal.
-- Los mensajes de carga, éxito, advertencia y error se muestran en ventanas emergentes grandes.
-- La carpeta `assets/` debe subirse completa al repositorio.
+:root {
+  --bna-cyan: #079ec0;
+  --bna-cyan-dark: #006d8b;
+  --bna-cyan-deep: #00556d;
+  --poncho-navy: #232b4d;
+  --poncho-blue: #aab9df;
+  --poncho-gold: #c3a13d;
+  --poncho-gold-soft: #f5edd7;
+  --paper: #f3f6f8;
+  --white: #ffffff;
+  --ink: #182438;
+  --muted: #687489;
+  --line: #dbe3e9;
+  --danger: #a9342b;
+  --danger-soft: #fff0ee;
+  --ok: #187448;
+  --ok-soft: #e7f7ef;
+  --warning: #95670f;
+  --warning-soft: #fff7df;
+  --radius-xl: 28px;
+  --radius-lg: 20px;
+  --radius-md: 14px;
+  --shadow: 0 18px 44px rgba(24,36,56,.13);
+  --shadow-sm: 0 8px 24px rgba(24,36,56,.09);
+}
+* { box-sizing: border-box; }
+html { scroll-behavior: smooth; }
+body {
+  margin: 0; min-height: 100vh;
+  font-family: "Segoe UI", Aptos, Inter, system-ui, -apple-system, sans-serif;
+  color: var(--ink);
+  background:
+    linear-gradient(rgba(243,246,248,.94), rgba(243,246,248,.98)),
+    url("./poncho-azul.png") center top / 760px auto fixed;
+}
+button, input, select { font: inherit; }
+button { -webkit-tap-highlight-color: transparent; }
+code { background: rgba(255,255,255,.74); padding: .1rem .35rem; border-radius: 5px; }
+.app-shell { min-height: 100vh; display: flex; flex-direction: column; }
+.topbar {
+  position: sticky; top: 0; z-index: 30; min-height: 82px;
+  display: flex; align-items: center; gap: 14px;
+  padding: 9px max(16px, env(safe-area-inset-left));
+  color: var(--white);
+  background: linear-gradient(90deg, var(--bna-cyan-deep), var(--bna-cyan));
+  border-bottom: 4px solid var(--poncho-gold);
+  box-shadow: 0 9px 26px rgba(24,36,56,.22);
+}
+.brand-lockup { display: flex; align-items: center; gap: 14px; min-width: 0; }
+.bna-logo { width: 142px; height: 58px; object-fit: contain; padding: 5px 10px; border-radius: 12px; background: white; }
+.brand-text { min-width: 0; }
+.brand-text strong { display: block; letter-spacing: .09em; font-size: 1rem; }
+.brand-text span { display: block; margin-top: 3px; font-size: .73rem; opacity: .86; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.icon-btn { display: none; width: 42px; height: 42px; padding: 0; flex: 0 0 auto; border: 1px solid rgba(255,255,255,.25); border-radius: 12px; color: white; background: rgba(255,255,255,.12); cursor: pointer; font-size: 1.25rem; }
+.icon-btn.show { display: inline-grid; place-items: center; }
+.agent-chip { margin-left: auto; max-width: 260px; padding: 9px 13px; border-radius: 999px; border: 1px solid rgba(255,255,255,.25); color: white; background: rgba(35,43,77,.34); font-size: .76rem; font-weight: 800; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+main { width: min(1160px, 100%); margin: 0 auto; padding: 20px 16px 58px; flex: 1; }
+.hero-panel { position: relative; overflow: hidden; margin-bottom: 26px; border-radius: var(--radius-xl); background: white; box-shadow: var(--shadow); border: 1px solid rgba(0,109,139,.18); }
+.hero-banner { display: block; width: 100%; height: auto; max-height: 230px; object-fit: cover; }
+.hero-event { position: relative; min-height: 185px; padding: 30px; display: flex; align-items: flex-end; color: white; background: linear-gradient(90deg, rgba(35,43,77,.98), rgba(35,43,77,.70) 60%, rgba(35,43,77,.18)), url("./poncho-azul.png") center 38% / cover no-repeat; }
+.hero-event::after { content: ""; position: absolute; inset: auto 0 0; height: 7px; background: linear-gradient(90deg, var(--poncho-gold), var(--poncho-blue), var(--bna-cyan)); }
+.hero-copy { position: relative; z-index: 1; max-width: 720px; text-shadow: 0 2px 14px rgba(0,0,0,.28); }
+.eyebrow { display: inline-block; margin-bottom: 8px; font-size: .73rem; font-weight: 900; letter-spacing: .13em; color: #f7dfa0; }
+.hero-copy h1 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.8rem, 5vw, 3.15rem); line-height: 1.02; }
+.hero-copy p { margin: 11px 0 0; font-size: 1rem; opacity: .92; }
+.config-alert { margin-bottom: 20px; padding: 14px 17px; border-radius: var(--radius-md); background: var(--warning-soft); color: var(--warning); border: 1px solid #ead28d; }
+.screen { display: none; }
+.screen.active { display: block; animation: screenIn .22s ease both; }
+@keyframes screenIn { from { opacity: 0; transform: translateY(8px); } }
+.section-heading { display: flex; align-items: center; gap: 13px; margin: 0 0 17px; }
+.section-heading h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.45rem, 3vw, 2rem); color: var(--poncho-navy); }
+.section-heading p { margin: 3px 0 0; color: var(--muted); font-size: .91rem; }
+.step { width: 46px; height: 46px; flex: 0 0 auto; display: grid; place-items: center; border-radius: 14px; color: white; background: linear-gradient(145deg, var(--poncho-navy), #3d4a7c); border: 2px solid var(--poncho-gold); font-weight: 900; }
+.dashboard-heading .btn { margin-left: auto; }
+.card { background: rgba(255,255,255,.97); border: 1px solid var(--line); border-radius: var(--radius-lg); box-shadow: var(--shadow-sm); }
+.form-card, .search-card { padding: clamp(19px, 4vw, 29px); }
+label { display: block; margin: 0 0 7px; color: #35445e; font-size: .83rem; font-weight: 850; }
+input, select { width: 100%; min-height: 50px; padding: 12px 14px; color: var(--ink); background: #fcfdff; border: 1px solid #cbd7e2; border-radius: 12px; transition: border-color .15s, box-shadow .15s; }
+input:focus, select:focus { outline: none; border-color: var(--bna-cyan); box-shadow: 0 0 0 4px rgba(7,158,192,.15); }
+input[aria-invalid="true"], select[aria-invalid="true"] { border-color: var(--danger); }
+.form-grid { display: grid; gap: 16px; margin-top: 16px; }
+.two-cols { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.field-wrap { margin-bottom: 16px; }
+.field-help { display: block; margin-top: 5px; color: var(--muted); font-size: .74rem; }
+.btn { border: 0; min-height: 47px; padding: 11px 18px; border-radius: 13px; font-weight: 850; cursor: pointer; transition: transform .12s, opacity .12s, box-shadow .12s; }
+.btn:active { transform: translateY(1px) scale(.995); }
+.btn:disabled { cursor: wait; opacity: .62; }
+.btn-primary { width: 100%; margin-top: 20px; color: white; background: linear-gradient(135deg, var(--bna-cyan-deep), var(--bna-cyan)); box-shadow: 0 9px 20px rgba(0,109,139,.23); }
+.btn-primary:hover { box-shadow: 0 12px 24px rgba(0,109,139,.30); }
+.btn-secondary { color: var(--poncho-navy); background: #edf1fb; border: 1px solid #c9d2eb; }
+.btn-danger { color: var(--danger); background: var(--danger-soft); border: 1px solid #f0c9c5; }
+.btn.compact { width: auto; min-height: 44px; margin: 0; padding-inline: 17px; }
+.grid-menu { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 17px; }
+.menu-card { position: relative; overflow: hidden; min-height: 170px; padding: 23px; text-align: left; display: flex; flex-direction: column; align-items: flex-start; justify-content: flex-end; border: 1px solid var(--line); border-radius: var(--radius-lg); background: rgba(255,255,255,.98); color: var(--ink); box-shadow: var(--shadow-sm); cursor: pointer; transition: transform .16s, box-shadow .16s, border-color .16s; }
+.menu-card::after { content: ""; position: absolute; right: -35px; top: -44px; width: 150px; height: 135px; opacity: .12; background: url("./poncho-dorado.png") center / cover no-repeat; border-radius: 50%; }
+.menu-card:hover { transform: translateY(-3px); border-color: var(--bna-cyan); box-shadow: var(--shadow); }
+.menu-card.wide { grid-column: 1 / -1; min-height: 138px; color: white; border: 0; background: linear-gradient(115deg, rgba(35,43,77,.98), rgba(58,72,122,.90)), url("./poncho-azul.png") center 45% / cover no-repeat; }
+.menu-icon { width: 44px; height: 44px; margin-bottom: auto; display: grid; place-items: center; border-radius: 14px; background: #e7f6fa; color: var(--bna-cyan-deep); font-size: 1.35rem; font-weight: 900; border: 1px solid #bfe5ef; }
+.menu-card.wide .menu-icon { background: rgba(255,255,255,.14); color: white; border-color: rgba(255,255,255,.2); }
+.menu-card strong { font-family: Georgia, "Times New Roman", serif; font-size: 1.28rem; color: var(--poncho-navy); }
+.menu-card.wide strong { color: white; }
+.menu-card > span:last-child { margin-top: 5px; color: var(--muted); font-size: .83rem; }
+.menu-card.wide > span:last-child { color: rgba(255,255,255,.78); }
+.search-row { display: grid; grid-template-columns: 1fr auto; gap: 10px; }
+.search-card small { display: block; margin-top: 8px; color: var(--muted); }
+.results-stack { display: grid; gap: 12px; }
+.result-row { padding: 19px; border-radius: var(--radius-lg); background: rgba(255,255,255,.98); border: 1px solid var(--line); box-shadow: var(--shadow-sm); }
+.result-head { display: flex; justify-content: space-between; gap: 16px; }
+.result-title { margin: 0; font-family: Georgia, "Times New Roman", serif; font-size: 1.08rem; color: var(--poncho-navy); }
+.result-meta { margin-top: 4px; color: var(--muted); font-size: .8rem; }
+.tags { display: flex; flex-wrap: wrap; gap: 7px; margin-top: 13px; }
+.tag { padding: 5px 9px; border-radius: 999px; font-size: .7rem; font-weight: 850; }
+.tag.si { background: var(--ok-soft); color: var(--ok); }
+.tag.no { background: #eef2f5; color: #647477; }
+.action-row { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 9px; margin-top: 14px; }
+.list-submenu { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 13px; }
+.submenu-btn { min-height: 98px; padding: 17px; text-align: left; border: 1px solid var(--line); border-left: 6px solid var(--poncho-gold); border-radius: var(--radius-md); background: rgba(255,255,255,.98); color: var(--ink); box-shadow: var(--shadow-sm); cursor: pointer; }
+.submenu-btn strong { display: block; font-family: Georgia, "Times New Roman", serif; color: var(--poncho-navy); font-size: 1.02rem; }
+.submenu-btn span { display: block; margin-top: 5px; color: var(--muted); font-size: .77rem; line-height: 1.35; }
+.msg { display: none; margin-top: 14px; padding: 12px 14px; border-radius: 11px; font-size: .84rem; font-weight: 750; }
+.msg.ok, .msg.warn, .msg.info { display: block; }
+.msg.ok { color: var(--ok); background: var(--ok-soft); border: 1px solid #b9e5cc; }
+.msg.warn { color: var(--danger); background: var(--danger-soft); border: 1px solid #efc3bf; }
+.msg.info { color: var(--bna-cyan-deep); background: #e7f6fa; border: 1px solid #bfe5ef; }
+.dashboard-status { min-height: 22px; margin: -6px 0 12px; color: var(--muted); font-size: .78rem; }
+.kpis { display: grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap: 13px; margin-bottom: 17px; }
+.kpi { min-height: 116px; padding: 18px; display: flex; flex-direction: column; justify-content: space-between; border-radius: var(--radius-lg); background: rgba(255,255,255,.98); border: 1px solid var(--line); border-top: 5px solid var(--poncho-gold); box-shadow: var(--shadow-sm); }
+.kpi .num { font-family: Georgia, "Times New Roman", serif; font-size: clamp(1.7rem, 4vw, 2.45rem); font-weight: 900; color: var(--bna-cyan-deep); }
+.kpi .lbl { color: var(--muted); font-size: .77rem; line-height: 1.3; }
+.dashboard-grid { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 17px; }
+.chart-card { padding: 19px; min-width: 0; }
+.chart-wide { grid-column: 1 / -1; }
+.card-heading { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.card-heading h3 { margin: 0; font-family: Georgia, "Times New Roman", serif; color: var(--poncho-navy); font-size: 1.06rem; }
+.card-heading span { color: var(--muted); font-size: .71rem; }
+canvas { max-width: 100%; }
+.app-modal[hidden] { display: none; }
+.app-modal { position: fixed; inset: 0; z-index: 100; display: grid; place-items: center; padding: 18px; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(20,28,48,.70); backdrop-filter: blur(5px); }
+.modal-panel { position: relative; width: min(560px, 100%); max-height: 88vh; overflow: auto; padding: clamp(26px, 5vw, 40px); text-align: center; border-radius: 28px; background: white; border: 3px solid var(--poncho-gold); box-shadow: 0 28px 80px rgba(0,0,0,.34); animation: modalIn .2s ease both; }
+@keyframes modalIn { from { opacity: 0; transform: scale(.94) translateY(12px); } }
+.modal-visual { width: 82px; height: 82px; margin: 0 auto 18px; display: grid; place-items: center; border-radius: 24px; font-size: 2.35rem; font-weight: 900; color: white; background: linear-gradient(145deg, var(--bna-cyan-deep), var(--bna-cyan)); box-shadow: 0 12px 26px rgba(0,109,139,.25); }
+.modal-panel.is-error .modal-visual { background: linear-gradient(145deg, #8e2922, #c74b40); }
+.modal-panel.is-warning .modal-visual { color: var(--poncho-navy); background: linear-gradient(145deg, #e7cc72, var(--poncho-gold)); }
+.modal-panel.is-loading .modal-visual { font-size: 0; }
+.modal-panel.is-loading .modal-visual::after { content: ""; width: 34px; height: 34px; border-radius: 50%; border: 5px solid rgba(255,255,255,.42); border-top-color: white; animation: spin .75s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+.modal-panel h2 { margin: 0; font-family: Georgia, "Times New Roman", serif; color: var(--poncho-navy); font-size: clamp(1.55rem, 4vw, 2.15rem); }
+.modal-panel p { margin: 13px auto 0; max-width: 440px; color: var(--muted); font-size: 1.02rem; line-height: 1.55; white-space: pre-line; }
+.modal-actions { margin-top: 24px; }
+.modal-actions .btn { min-width: 190px; margin-top: 0; }
+.modal-panel.is-loading .modal-actions { display: none; }
+.toast { position: fixed; right: 18px; bottom: 18px; z-index: 60; max-width: min(380px, calc(100vw - 36px)); padding: 13px 16px; border-radius: 13px; color: white; background: var(--poncho-navy); box-shadow: 0 16px 35px rgba(0,0,0,.24); opacity: 0; transform: translateY(16px); pointer-events: none; transition: .2s; }
+.toast.show { opacity: 1; transform: none; }
+footer { padding: 25px 16px calc(25px + env(safe-area-inset-bottom)); text-align: center; border-top: 5px solid var(--poncho-gold); background: linear-gradient(90deg, rgba(35,43,77,.98), rgba(0,109,139,.96)); color: white; }
+footer strong, footer span { display: block; }
+footer strong { font-family: Georgia, "Times New Roman", serif; letter-spacing: .09em; }
+footer span { margin-top: 4px; font-size: .77rem; opacity: .84; }
+@media (max-width: 740px) {
+  .topbar { min-height: 72px; }
+  .bna-logo { width: 112px; height: 49px; }
+  main { padding-top: 14px; }
+  .hero-event { min-height: 155px; padding: 23px; }
+  .hero-copy p { font-size: .88rem; }
+  .two-cols, .grid-menu, .list-submenu, .dashboard-grid { grid-template-columns: 1fr; }
+  .menu-card.wide, .chart-wide { grid-column: auto; }
+  .kpis { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .dashboard-heading { align-items: flex-start; flex-wrap: wrap; }
+  .dashboard-heading .btn { margin-left: 59px; }
+}
+@media (max-width: 500px) {
+  .brand-text span { display: none; }
+  .agent-chip { max-width: 96px; }
+  .hero-banner { min-height: 92px; object-fit: cover; }
+  .search-row, .action-row { grid-template-columns: 1fr; }
+  .search-row .btn { width: 100%; }
+  .result-head { display: block; }
+  .kpi { min-height: 98px; padding: 14px; }
+  .modal-panel { padding: 26px 20px; border-radius: 22px; }
+}
+@media (prefers-reduced-motion: reduce) { * { animation: none !important; transition: none !important; scroll-behavior: auto !important; } }
