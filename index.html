@@ -1,184 +1,505 @@
-<!doctype html>
-<html lang="es">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0a6675">
-  <meta name="description" content="Aplicación operativa PONCHO 2026 · Equipo NOA Oeste · Medios de Pago">
-  <title>PONCHO 2026 · Equipo NOA Oeste</title>
+"use strict";
 
-  <!-- En este repositorio los archivos están en la raíz. -->
-  <link rel="stylesheet" href="./style.css?v=2">
-  <link rel="manifest" href="./manifest.webmanifest">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
+const APPS_SCRIPT_URL = String(window.APPS_SCRIPT_URL || "").trim();
+const IS_CONFIGURED = /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(APPS_SCRIPT_URL);
 
-  <script>
-    /* Reemplazar por la URL /exec de la implementación de Google Apps Script. */
-    window.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxmb1U4aaTT3C4EvNOKHdOq7lpCwJVYM3RrXdy5RrGt_xLe34cRepd8RVDR33UZ6YEL/exec";
-  </script>
-  <script src="./app.js?v=2" defer></script>
-</head>
-<body>
-  <div class="app-shell">
-    <header class="topbar">
-      <button class="icon-btn back-btn" id="btnBack" type="button" aria-label="Volver">←</button>
-      <div class="brand-lockup" aria-label="PONCHO 2026">
-        <div class="brand-mark">BNA</div>
-        <div>
-          <strong>PONCHO 2026</strong>
-          <span>Equipo NOA Oeste · Medios de Pago</span>
-        </div>
-      </div>
-      <button class="agent-chip" id="chipAgente" type="button" hidden title="Cambiar agente"></button>
-    </header>
+const PERSONAS_CONFIG = {
+  "alta-tarjeta": {
+    label: "Alta de tarjeta",
+    description: "Registro de nueva tarjeta Visa o Mastercard.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "habilitacion-tc": {
+    label: "Habilitación de TC / MODO",
+    description: "Habilitación por llamada o adhesión a MODO.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "activacion-tc": {
+    label: "Activación de TC",
+    description: "Canje único por DNI. Controla importe y cupones.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "cantidadCupones", label: "Cantidad de cupones", type: "number", min: 1, step: 1 },
+      { name: "totalCompra", label: "Total de la compra ($)", type: "number", min: 0, step: 0.01, help: "Para la mochila, el monto debe superar $200.000." },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "elegi-mas": {
+    label: "Elegí Más",
+    description: "Canje único por ID de voucher.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "idVoucher", label: "ID de voucher", type: "text", maxLength: 60 }
+    ]
+  },
+  prestamos: {
+    label: "Préstamos",
+    description: "Asesoramiento o solicitud cursada.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "linea", label: "Línea", type: "select", options: ["Adelanto", "Personal", "Viaja+", "Más Autos"] },
+      { name: "monto", label: "Monto ($)", type: "number", min: 0, step: 0.01 }
+    ]
+  },
+  seguros: {
+    label: "Seguros",
+    description: "Producto asesorado o contratado.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "linea", label: "Línea / producto", type: "text", maxLength: 80 },
+      { name: "monto", label: "Monto / prima ($)", type: "number", min: 0, step: 0.01 }
+    ]
+  },
+  "app-bna": {
+    label: "App BNA+",
+    description: "Alta, migración o asesoramiento.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "accion", label: "Acción", type: "select", options: ["Alta", "Migración nueva app", "Asesoramiento"] }
+    ]
+  }
+};
 
-    <main>
-      <section class="hero-panel" aria-hidden="true">
-        <div class="poncho-pattern"></div>
-        <div class="hero-copy">
-          <span class="eyebrow">Fiesta Nacional e Internacional del Poncho</span>
-          <h1>Gestión operativa en tiempo real</h1>
-          <p>Comercios, acciones comerciales y tablero de seguimiento.</p>
-        </div>
-      </section>
+let agente = null;
+let tipoFormActual = null;
+let historialPantallas = [];
+let charts = {};
+let toastTimer = null;
 
-      <div id="configAlert" class="config-alert" hidden>
-        <strong>Falta conectar la app.</strong>
-        Pegá en <code>index.html</code> la URL de Apps Script que termina en <code>/exec</code>.
-      </div>
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
 
-      <!-- ENROLAMIENTO -->
-      <section class="screen active" id="screen-enrolamiento" aria-labelledby="titulo-enrolamiento">
-        <div class="section-heading">
-          <span class="step">01</span>
-          <div>
-            <h2 id="titulo-enrolamiento">Registro de agente</h2>
-            <p>Se solicita una sola vez por dispositivo.</p>
-          </div>
-        </div>
-        <div class="card form-card">
-          <label for="inApellidoNombre">Apellido y nombre</label>
-          <input id="inApellidoNombre" type="text" autocomplete="name" maxlength="80" placeholder="Ej.: Pérez, Juan">
+function normalizarTexto(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function soloDigitos(value) { return String(value || "").replace(/\D/g, ""); }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
+}
+function formatNumber(value) { return new Intl.NumberFormat("es-AR").format(Number(value || 0)); }
+function getAgenteHeader() { return agente ? `${agente.legajo} · ${agente.nombre} · ${agente.sucursal}` : ""; }
 
-          <div class="form-grid two-cols">
-            <div>
-              <label for="inLegajo">Legajo (5 números)</label>
-              <input id="inLegajo" type="text" inputmode="numeric" autocomplete="off" maxlength="5" placeholder="Ej.: 12345">
-            </div>
-            <div>
-              <label for="inSucursal">Sucursal</label>
-              <select id="inSucursal">
-                <option value="">Seleccionar…</option>
-                <option>Fray Mamerto Esquiú</option>
-                <option>SFV de Catamarca</option>
-                <option>Villa Dolores</option>
-              </select>
-            </div>
-          </div>
+function showToast(text) {
+  const toast = $("#toast");
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+}
+function setMessage(el, type, text) {
+  el.className = `msg${type ? ` ${type}` : ""}`;
+  el.textContent = text || "";
+}
 
-          <button class="btn btn-primary" id="btnEnrolar" type="button">Ingresar a la app</button>
-          <div class="msg" id="msgEnrolamiento" role="status" aria-live="polite"></div>
-        </div>
-      </section>
+let modalResolve = null;
+function showModal({ title, message = "", type = "success", loading = false, buttonText = "Aceptar" }) {
+  const modal = $("#appModal");
+  const panel = modal.querySelector(".modal-panel");
+  const visual = $("#modalVisual");
+  const accept = $("#modalAccept");
+  panel.className = "modal-panel";
+  if (loading) panel.classList.add("is-loading");
+  else if (type === "error") panel.classList.add("is-error");
+  else if (type === "warning") panel.classList.add("is-warning");
+  visual.textContent = loading ? "" : (type === "error" ? "!" : type === "warning" ? "!" : "✓");
+  $("#modalTitle").textContent = title;
+  $("#modalMessage").textContent = message;
+  accept.textContent = buttonText;
+  modal.hidden = false;
+  modal.setAttribute("aria-hidden", "false");
+  document.body.style.overflow = "hidden";
+  if (!loading) setTimeout(() => accept.focus(), 40);
+}
+function closeModal() {
+  const modal = $("#appModal");
+  modal.hidden = true;
+  modal.setAttribute("aria-hidden", "true");
+  document.body.style.overflow = "";
+  if (modalResolve) { modalResolve(); modalResolve = null; }
+}
+function modalAlert(options) {
+  return new Promise((resolve) => {
+    modalResolve = resolve;
+    showModal(options);
+  });
+}
+$("#modalAccept").addEventListener("click", closeModal);
+$$("[data-modal-close]").forEach((el) => el.addEventListener("click", () => {
+  const panel = $("#appModal .modal-panel");
+  if (!panel.classList.contains("is-loading")) closeModal();
+}));
+document.addEventListener("keydown", (event) => {
+  if (event.key === "Escape" && !$("#appModal").hidden && !$("#appModal .modal-panel").classList.contains("is-loading")) closeModal();
+});
+function setBusy(button, busy, busyText = "Procesando…") {
+  if (!button) return;
+  if (busy) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = busyText;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+  }
+}
+function requireConfigured() {
+  if (IS_CONFIGURED) return true;
+  $("#configAlert").hidden = false;
+  showToast("Primero conectá la URL de Apps Script.");
+  return false;
+}
 
-      <!-- MENU -->
-      <section class="screen" id="screen-menu" aria-labelledby="titulo-menu">
-        <div class="section-heading">
-          <span class="step">02</span>
-          <div>
-            <h2 id="titulo-menu">Menú principal</h2>
-            <p>Elegí la gestión que vas a realizar.</p>
-          </div>
-        </div>
-        <div class="grid-menu">
-          <button class="menu-card" type="button" data-go="comercios">
-            <span class="menu-icon">⌂</span><strong>Comercios</strong><span>Consultar, validar y señalizar</span>
-          </button>
-          <button class="menu-card" type="button" data-go="personas">
-            <span class="menu-icon">＋</span><strong>Personas</strong><span>Registrar acciones y entregas</span>
-          </button>
-          <button class="menu-card wide" type="button" data-go="dashboard">
-            <span class="menu-icon">▥</span><strong>Dashboard</strong><span>Seguimiento online y métricas del evento</span>
-          </button>
-        </div>
-      </section>
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal, cache: "no-store" });
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch { throw new Error("El servidor no devolvió JSON válido. Revisá la implementación de Apps Script."); }
+    if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("La consulta demoró demasiado. Probá nuevamente.");
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+async function gsGet(params) {
+  if (!requireConfigured()) throw new Error("La app todavía no está conectada.");
+  const url = new URL(APPS_SCRIPT_URL);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  url.searchParams.set("_", Date.now());
+  return fetchJson(url.toString(), { method: "GET", redirect: "follow" });
+}
+async function gsPost(payload) {
+  if (!requireConfigured()) throw new Error("La app todavía no está conectada.");
+  return fetchJson(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+    redirect: "follow"
+  });
+}
 
-      <!-- COMERCIOS -->
-      <section class="screen" id="screen-comercios" aria-labelledby="titulo-comercios">
-        <div class="section-heading">
-          <span class="step">C</span>
-          <div><h2 id="titulo-comercios">Comercios</h2><p>Buscá por CUIT/CUIL, razón social o nombre de fantasía.</p></div>
-        </div>
-        <div class="card search-card">
-          <label for="inBuscarComercio">CUIT/CUIL, razón social o nombre de fantasía</label>
-          <div class="search-row">
-            <input id="inBuscarComercio" type="search" autocomplete="off" placeholder="Ej.: 30-12345678-9, razón social o nombre del comercio">
-            <button class="btn btn-primary compact" id="btnBuscarComercio" type="button">Buscar</button>
-          </div>
-          <small>La búsqueda no distingue mayúsculas, tildes ni guiones.</small>
-        </div>
-        <div id="resultadosComercios" class="results-stack" aria-live="polite"></div>
-      </section>
+function mostrarPantalla(id, { push = true } = {}) {
+  $$(".screen").forEach((screen) => screen.classList.remove("active"));
+  const next = document.getElementById(id);
+  if (!next) return;
+  next.classList.add("active");
+  if (push && historialPantallas.at(-1) !== id) historialPantallas.push(id);
+  $("#btnBack").classList.toggle("show", historialPantallas.length > 1);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (id === "screen-dashboard") cargarDashboard();
+}
+function irAlMenu() {
+  historialPantallas = ["screen-menu"];
+  mostrarPantalla("screen-menu", { push: false });
+}
 
-      <!-- PERSONAS -->
-      <section class="screen" id="screen-personas" aria-labelledby="titulo-personas">
-        <div class="section-heading">
-          <span class="step">P</span>
-          <div><h2 id="titulo-personas">Personas</h2><p>Seleccioná el tipo de acción.</p></div>
-        </div>
-        <div class="list-submenu" id="listaSubmenus"></div>
-      </section>
+function init() {
+  $("#configAlert").hidden = IS_CONFIGURED;
+  try {
+    const saved = localStorage.getItem("poncho2026_agente");
+    agente = saved ? JSON.parse(saved) : null;
+  } catch { localStorage.removeItem("poncho2026_agente"); }
 
-      <!-- FORMULARIO PERSONAS -->
-      <section class="screen" id="screen-form-personas" aria-labelledby="tituloForm">
-        <div class="section-heading">
-          <span class="step">P</span>
-          <div><h2 id="tituloForm">Formulario</h2><p id="subtituloForm">Completá todos los campos.</p></div>
-        </div>
-        <div class="card form-card">
-          <form id="formPersonas" novalidate></form>
-          <div class="msg" id="msgPersonas" role="status" aria-live="polite"></div>
-        </div>
-      </section>
+  if (agente?.legajo && agente?.nombre && agente?.sucursal) {
+    actualizarChip();
+    irAlMenu();
+  } else {
+    historialPantallas = ["screen-enrolamiento"];
+    mostrarPantalla("screen-enrolamiento", { push: false });
+  }
 
-      <!-- DASHBOARD -->
-      <section class="screen" id="screen-dashboard" aria-labelledby="titulo-dashboard">
-        <div class="section-heading dashboard-heading">
-          <span class="step">D</span>
-          <div><h2 id="titulo-dashboard">Dashboard</h2><p>Información consolidada en línea.</p></div>
-          <button class="btn btn-secondary compact" id="btnRefrescarDashboard" type="button">Actualizar</button>
-        </div>
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+function actualizarChip() {
+  const chip = $("#chipAgente");
+  chip.hidden = !agente;
+  chip.textContent = agente ? `${agente.legajo} · ${agente.nombre.split(",")[0]}` : "";
+}
 
-        <div class="dashboard-status" id="dashboardStatus"></div>
-        <div class="kpis" id="kpis"></div>
+$("#btnBack").addEventListener("click", () => {
+  if (historialPantallas.length <= 1) return;
+  historialPantallas.pop();
+  mostrarPantalla(historialPantallas.at(-1), { push: false });
+});
+$("#chipAgente").addEventListener("click", () => {
+  if (!confirm("¿Querés cerrar la sesión de este agente en este dispositivo?")) return;
+  localStorage.removeItem("poncho2026_agente");
+  agente = null;
+  actualizarChip();
+  historialPantallas = ["screen-enrolamiento"];
+  mostrarPantalla("screen-enrolamiento", { push: false });
+});
 
-        <div class="dashboard-grid">
-          <article class="card chart-card chart-wide">
-            <div class="card-heading"><h3>Registros por módulo</h3><span>Total acumulado</span></div>
-            <canvas id="chartModulos" height="150"></canvas>
-          </article>
-          <article class="card chart-card chart-wide">
-            <div class="card-heading"><h3>Evolución diaria</h3><span>Últimos 14 días con actividad</span></div>
-            <canvas id="chartDiario" height="150"></canvas>
-          </article>
-          <article class="card chart-card">
-            <div class="card-heading"><h3>Top agentes</h3><span>Hasta 5 posiciones</span></div>
-            <canvas id="chartAgentes" height="190"></canvas>
-          </article>
-          <article class="card chart-card">
-            <div class="card-heading"><h3>Estado de comercios</h3><span>Gestión de adhesión y señalización</span></div>
-            <canvas id="chartComercios" height="190"></canvas>
-          </article>
-        </div>
-      </section>
-    </main>
+$("#inLegajo").addEventListener("input", (event) => { event.target.value = soloDigitos(event.target.value).slice(0, 5); });
+$("#btnEnrolar").addEventListener("click", async () => {
+  const nombre = $("#inApellidoNombre").value.trim().replace(/\s+/g, " ");
+  const legajo = soloDigitos($("#inLegajo").value);
+  const sucursal = $("#inSucursal").value;
+  const msg = $("#msgEnrolamiento");
+  const btn = $("#btnEnrolar");
+  setMessage(msg, "", "");
 
-    <footer>
-      <strong>PONCHO 2026</strong>
-      <span>Equipo NOA Oeste · Medios de Pago · BNA</span>
-    </footer>
-  </div>
+  if (nombre.length < 4 || !/^\d{5}$/.test(legajo) || !sucursal) {
+    setMessage(msg, "warn", "Completá apellido y nombre, un legajo de 5 números y la sucursal.");
+    return;
+  }
 
-  <div class="toast" id="toast" role="status" aria-live="polite"></div>
-</body>
-</html>
+  setBusy(btn, true, "Registrando…");
+  try {
+    const data = await gsPost({ action: "registrarAgente", legajo, apellidoNombre: nombre, sucursal });
+    if (!data.ok) throw new Error(data.error || "No se pudo registrar el agente.");
+    agente = { legajo, nombre, sucursal };
+    localStorage.setItem("poncho2026_agente", JSON.stringify(agente));
+    actualizarChip();
+    await modalAlert({ title: data.nuevo ? "Agente registrado" : "Bienvenido nuevamente", message: `${nombre}\n${sucursal}`, type: "success", buttonText: "Ingresar" });
+    irAlMenu();
+  } catch (error) { await modalAlert({ title: "No se pudo ingresar", message: error.message, type: "error" }); }
+  finally { setBusy(btn, false); }
+});
+
+$$('[data-go]').forEach((button) => button.addEventListener("click", () => {
+  const destino = button.dataset.go;
+  if (destino === "comercios") mostrarPantalla("screen-comercios");
+  if (destino === "personas") { renderListaSubmenus(); mostrarPantalla("screen-personas"); }
+  if (destino === "dashboard") mostrarPantalla("screen-dashboard");
+}));
+
+$("#inBuscarComercio").addEventListener("keydown", (event) => { if (event.key === "Enter") buscarComercio(); });
+$("#btnBuscarComercio").addEventListener("click", buscarComercio);
+async function buscarComercio() {
+  const input = $("#inBuscarComercio");
+  const q = input.value.trim();
+  const cont = $("#resultadosComercios");
+  const btn = $("#btnBuscarComercio");
+  if (q.length < 2) { cont.innerHTML = '<div class="msg warn">Ingresá al menos 2 caracteres.</div>'; return; }
+
+  setBusy(btn, true, "Buscando…");
+  showModal({ title: "Buscando comercios", message: "Consultando la base de El Marcatón al Poncho 2026…", loading: true });
+  cont.innerHTML = '<div class="msg info">Buscando comercios…</div>';
+  try {
+    const data = await gsGet({ action: "buscarComercio", q });
+    if (!data.ok) throw new Error(data.error || "No se pudo realizar la búsqueda.");
+    const resultados = Array.isArray(data.resultados) ? data.resultados : [];
+    if (!resultados.length) { closeModal(); cont.innerHTML = '<div class="msg info">No se encontraron coincidencias.</div>'; await modalAlert({ title: "Sin resultados", message: "No encontramos comercios con esos datos. Probá con CUIT/CUIL, razón social o nombre de fantasía.", type: "warning" }); return; }
+    closeModal();
+    cont.innerHTML = "";
+    resultados.slice(0, 30).forEach((result) => cont.appendChild(renderResultadoComercio(result)));
+    if (resultados.length > 30) showToast("Se muestran las primeras 30 coincidencias. Afiná la búsqueda.");
+  } catch (error) { closeModal(); cont.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`; await modalAlert({ title: "Error de búsqueda", message: error.message, type: "error" }); }
+  finally { setBusy(btn, false); }
+}
+function isYes(value) { return ["si", "sí", "true", "1", "x"].includes(normalizarTexto(value)); }
+function renderResultadoComercio(result) {
+  const promoSi = isYes(result.promo);
+  const senalSi = isYes(result.senalizado);
+  const card = document.createElement("article");
+  card.className = "result-row";
+  card.innerHTML = `
+    <div class="result-head">
+      <div><h3 class="result-title">${escapeHtml(result.razonSocial || "Sin razón social")}</h3><div class="result-meta">CUIT: ${escapeHtml(result.cuit || "-")}</div></div>
+      <div class="result-meta">Fila ${escapeHtml(result.rowNumber)}</div>
+    </div>
+    <div class="tags"><span class="tag ${promoSi ? "si" : "no"}">Promo: ${promoSi ? "SÍ" : "NO"}</span><span class="tag ${senalSi ? "si" : "no"}">Señalizado: ${senalSi ? "SÍ" : "NO"}</span></div>
+    <div class="action-row"></div>`;
+
+  const actions = card.querySelector(".action-row");
+  const promoBtn = document.createElement("button");
+  promoBtn.className = `btn ${promoSi ? "btn-danger" : "btn-secondary"}`;
+  promoBtn.textContent = promoSi ? "Quitar Promo" : "Marcar Promo aceptada";
+  promoBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, !promoSi, senalSi, promoBtn));
+
+  const signalBtn = document.createElement("button");
+  signalBtn.className = `btn ${senalSi ? "btn-danger" : "btn-secondary"}`;
+  signalBtn.textContent = senalSi ? "Quitar señalización" : "Marcar señalizado";
+  signalBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, promoSi, !senalSi, signalBtn));
+  actions.append(promoBtn, signalBtn);
+  return card;
+}
+async function actualizarComercio(rowNumber, promo, senalizado, button) {
+  setBusy(button, true, "Guardando…");
+  showModal({ title: "Actualizando comercio", message: "Guardando el estado y los datos del agente…", loading: true });
+  try {
+    const data = await gsPost({ action: "actualizarComercio", rowNumber, promo: promo ? "Si" : "No", senalizado: senalizado ? "Si" : "No", agente: getAgenteHeader() });
+    if (!data.ok) throw new Error(data.error || "No se pudo actualizar el comercio.");
+    closeModal();
+    await modalAlert({ title: "Comercio actualizado", message: `Promo aceptada: ${promo ? "SÍ" : "NO"}\nSeñalizado: ${senalizado ? "SÍ" : "NO"}`, type: "success" });
+    await buscarComercio();
+  } catch (error) { closeModal(); await modalAlert({ title: "No se pudo actualizar", message: error.message, type: "error" }); }
+  finally { setBusy(button, false); }
+}
+
+function renderListaSubmenus() {
+  const cont = $("#listaSubmenus");
+  cont.innerHTML = "";
+  Object.entries(PERSONAS_CONFIG).forEach(([key, config]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "submenu-btn";
+    button.innerHTML = `<strong>${escapeHtml(config.label)}</strong><span>${escapeHtml(config.description)}</span>`;
+    button.addEventListener("click", () => abrirFormPersonas(key));
+    cont.appendChild(button);
+  });
+}
+function abrirFormPersonas(tipo) {
+  tipoFormActual = tipo;
+  const config = PERSONAS_CONFIG[tipo];
+  $("#tituloForm").textContent = config.label;
+  $("#subtituloForm").textContent = config.description;
+  const form = $("#formPersonas");
+  form.innerHTML = "";
+
+  config.campos.forEach((campo) => {
+    const wrap = document.createElement("div");
+    wrap.className = "field-wrap";
+    const label = document.createElement("label");
+    label.htmlFor = `field-${campo.name}`;
+    label.textContent = campo.label;
+    wrap.appendChild(label);
+
+    let control;
+    if (campo.type === "select") {
+      control = document.createElement("select");
+      control.innerHTML = '<option value="">Seleccionar…</option>' + campo.options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("");
+    } else {
+      control = document.createElement("input");
+      control.type = campo.type;
+      if (campo.inputmode) control.inputMode = campo.inputmode;
+      if (campo.maxLength) control.maxLength = campo.maxLength;
+      if (campo.min !== undefined) control.min = campo.min;
+      if (campo.step !== undefined) control.step = campo.step;
+      if (campo.pattern === "dni") control.addEventListener("input", (event) => { event.target.value = soloDigitos(event.target.value).slice(0, 8); });
+    }
+    control.id = `field-${campo.name}`;
+    control.name = campo.name;
+    control.required = true;
+    wrap.appendChild(control);
+    if (campo.help) { const help = document.createElement("small"); help.className = "field-help"; help.textContent = campo.help; wrap.appendChild(help); }
+    form.appendChild(wrap);
+  });
+
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "btn btn-primary";
+  submit.textContent = "Registrar acción";
+  form.appendChild(submit);
+  form.onsubmit = (event) => { event.preventDefault(); registrarPersona(submit); };
+  setMessage($("#msgPersonas"), "", "");
+  mostrarPantalla("screen-form-personas");
+}
+async function registrarPersona(button) {
+  const config = PERSONAS_CONFIG[tipoFormActual];
+  const form = $("#formPersonas");
+  const msg = $("#msgPersonas");
+  const payload = { action: "registrarPersona", tipo: tipoFormActual, agente: getAgenteHeader() };
+  let invalid = false;
+
+  config.campos.forEach((campo) => {
+    const control = form.elements[campo.name];
+    let value = String(control.value || "").trim();
+    if (campo.pattern === "dni") value = soloDigitos(value);
+    const validDni = campo.pattern !== "dni" || /^\d{7,8}$/.test(value);
+    const valid = value !== "" && validDni && (campo.type !== "number" || Number(value) >= Number(campo.min ?? 0));
+    control.setAttribute("aria-invalid", String(!valid));
+    if (!valid) invalid = true;
+    payload[campo.name] = value;
+  });
+
+  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) <= 200000) {
+    await modalAlert({ title: "Monto insuficiente", message: "El monto informado no supera $200.000. Revisalo antes de entregar la mochila.", type: "warning" });
+    return;
+  }
+  if (invalid) { await modalAlert({ title: "Revisá los datos", message: "Hay campos incompletos o inválidos. El DNI debe tener 7 u 8 números.", type: "warning" }); return; }
+
+  setBusy(button, true, "Registrando…");
+  setMessage(msg, "", "");
+  showModal({ title: "Registrando acción", message: "Guardando la información en Google Sheets…", loading: true });
+  try {
+    const data = await gsPost(payload);
+    if (!data.ok) throw new Error(data.error || "No se pudo registrar la acción.");
+    closeModal();
+    if (data.duplicado) { await modalAlert({ title: "Registro ya existente", message: data.mensaje, type: "warning" }); return; }
+    form.reset();
+    await modalAlert({ title: "Acción registrada", message: data.mensaje || "La información se guardó correctamente en Google Sheets.", type: "success" });
+    historialPantallas.pop();
+    mostrarPantalla("screen-personas", { push: false });
+  } catch (error) { closeModal(); await modalAlert({ title: "No se pudo registrar", message: error.message, type: "error" }); }
+  finally { setBusy(button, false); }
+}
+
+$("#btnRefrescarDashboard").addEventListener("click", cargarDashboard);
+async function cargarDashboard() {
+  const kpis = $("#kpis");
+  const status = $("#dashboardStatus");
+  status.textContent = "Actualizando datos…";
+  kpis.innerHTML = '<div class="msg info">Cargando tablero…</div>';
+  try {
+    if (typeof Chart === "undefined") throw new Error("No se pudo cargar Chart.js. Revisá la conexión a Internet.");
+    const data = await gsGet({ action: "dashboardResumen" });
+    if (!data.ok) throw new Error(data.error || "No se pudo cargar el dashboard.");
+
+    kpis.innerHTML = `
+      <article class="kpi"><div class="num">${formatNumber(data.totalRegistros)}</div><div class="lbl">Registros de personas</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.total)}</div><div class="lbl">Comercios inscriptos</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.promo)}</div><div class="lbl">Con Promo aceptada</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.senalizado)}</div><div class="lbl">Comercios señalizados</div></article>`;
+
+    const tipos = Object.keys(data.datosPorTipo || {});
+    renderChart("chartModulos", "bar", tipos.map((key) => data.datosPorTipo[key].label), [{ label: "Registros", data: tipos.map((key) => data.datosPorTipo[key].cantidad), backgroundColor: "#079ec0", borderRadius: 7 }]);
+
+    const daily = Array.isArray(data.serieDiaria) ? data.serieDiaria : [];
+    renderChart("chartDiario", "line", daily.map((row) => row.dia), tipos.map((key, index) => ({ label: data.datosPorTipo[key].label, data: daily.map((row) => row[key] || 0), borderColor: palette(index), backgroundColor: palette(index), pointRadius: 2, tension: .28, fill: false })));
+
+    const agents = Array.isArray(data.topAgentes) ? data.topAgentes : [];
+    renderChart("chartAgentes", "bar", agents.map((item) => item.agente), [{ label: "Registros", data: agents.map((item) => item.cantidad), backgroundColor: "#232b4d", borderRadius: 6 }], { indexAxis: "y" });
+
+    const commerce = data.comercios || { total: 0, promo: 0, senalizado: 0, ambos: 0 };
+    const ambos = Number(commerce.ambos || 0);
+    const soloPromo = Math.max(Number(commerce.promo || 0) - ambos, 0);
+    const soloSenal = Math.max(Number(commerce.senalizado || 0) - ambos, 0);
+    const sinGestion = Math.max(Number(commerce.total || 0) - ambos - soloPromo - soloSenal, 0);
+    renderChart("chartComercios", "doughnut", ["Promo y señalizado", "Solo Promo", "Solo señalizado", "Sin gestión"], [{ data: [ambos, soloPromo, soloSenal, sinGestion], backgroundColor: ["#079ec0", "#c3a13d", "#aab9df", "#d9e3e4"], borderWidth: 0 }], {}, true);
+
+    status.textContent = `Última actualización: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "medium" }).format(new Date())}`;
+  } catch (error) {
+    kpis.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`;
+    status.textContent = "No fue posible actualizar el tablero.";
+  }
+}
+function palette(index) { return ["#079ec0", "#232b4d", "#c3a13d", "#a9342b", "#187448", "#7f4b8b", "#5f7074"][index % 7]; }
+function renderChart(canvasId, type, labels, datasets, extraOptions = {}, legend = type === "line" || type === "doughnut") {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  charts[canvasId] = new Chart(canvas, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: legend, position: "bottom", labels: { boxWidth: 10, usePointStyle: true } } },
+      scales: type === "doughnut" ? {} : { x: { grid: { display: false }, ticks: { maxRotation: 35, minRotation: 0 } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(96,112,116,.12)" } } },
+      ...extraOptions
+    }
+  });
+}
+
+document.addEventListener("DOMContentLoaded", init);
