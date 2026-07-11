@@ -1,4 +1,4 @@
-const CACHE = "poncho-generico-v6";
+const CACHE = "poncho-bna-v7";
 const APP_SHELL = [
   "./",
   "./index.html",

@@ -224,9 +224,25 @@ function mostrarPantalla(id, { push = true } = {}) {
   $$(".screen").forEach((screen) => screen.classList.remove("active"));
   const next = document.getElementById(id);
   if (!next) return;
+
   next.classList.add("active");
   if (push && historialPantallas.at(-1) !== id) historialPantallas.push(id);
   $("#btnBack").classList.toggle("show", historialPantallas.length > 1);
+
+  const moduleClass =
+    id.includes("comercios") ? "theme-comercios" :
+    id.includes("personas") ? "theme-personas" :
+    id.includes("terminal") ? "theme-terminal" :
+    id.includes("links") ? "theme-links" :
+    id.includes("dashboard") ? "theme-dashboard" :
+    "theme-home";
+
+  document.body.classList.remove(
+    "theme-comercios", "theme-personas", "theme-terminal",
+    "theme-links", "theme-dashboard", "theme-home"
+  );
+  document.body.classList.add(moduleClass);
+
   window.scrollTo({ top: 0, behavior: "smooth" });
   if (id === "screen-dashboard") cargarDashboard();
 }
@@ -716,7 +732,7 @@ async function cargarDashboard() {
     status.textContent = "No fue posible actualizar el tablero.";
   }
 }
-function palette(index) { return ["#079ec0", "#232b4d", "#c3a13d", "#a9342b", "#187448", "#7f4b8b", "#5f7074"][index % 7]; }
+function palette(index) { return ["#00A7C4", "#FF9654", "#0B6D7A", "#C2A24A", "#3454D1", "#4F7C6E", "#7A5CA8"][index % 7]; }
 function renderChart(canvasId, type, labels, datasets, extraOptions = {}, legend = type === "line" || type === "doughnut") {
   const canvas = document.getElementById(canvasId);
   if (!canvas) return;

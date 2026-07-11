@@ -173,3 +173,40 @@ Cambios incluidos:
 - Se corrigieron los encabezados reales de la hoja `EL MARCATÓN AL PONCHO 2026 (Respuestas)`.
 
 Después de pegar el nuevo `Code.gs`, se debe publicar una nueva versión de la implementación de Apps Script.
+
+
+## Versión V5 · Corrección de pestaña y marca reutilizable
+
+- La pestaña de comercios ya no tiene que llamarse `Respuestas`.
+- Apps Script la detecta automáticamente por los encabezados `CUIT/CUIL`, `RAZÓN SOCIAL` y `SECTOR`.
+- Se eliminaron de la interfaz las referencias visuales específicas a 2026 y a la edición 55.
+- La portada ahora usa una composición gráfica genérica de PONCHO, reutilizable en futuras ediciones.
+- La aplicación conserva compatibilidad con agentes guardados en la versión anterior.
+
+
+## Versión V6 · Links necesarios y registro de terminales
+
+### Links necesarios
+El menú principal incorpora accesos directos al formulario de alta de comercio y a los contactos de +Pagos Nación.
+
+### Registro de terminales
+La pestaña `Terminales` se crea con:
+
+`Registro, Fecha, Hora, Agente, CUIT/CUIL, RazonSocial, NombreFantasia, Sector, Entrega, Venta, NumeroSerie`
+
+El backend valida el CUIT contra la base de comercios y evita repetir un número de serie.
+
+
+## Versión V7 · Sistema visual BNA + PONCHO
+
+- Color e icono propios para cada módulo.
+- Encabezados contextuales con la identidad del módulo.
+- Tipografía, espaciado y botones más cercanos al nuevo BNA+.
+- Tramas geométricas inspiradas en PONCHO, reutilizables todos los años.
+- Dashboard y formularios con mejor jerarquía visual.
+- No modifica el backend ni las hojas de Google Sheets.
+
+Para instalar esta versión visual, reemplazá en GitHub:
+`index.html`, `app.js`, `style.css`, `sw.js` y `README.md`.
+
+No hace falta reemplazar `Code.gs`.
