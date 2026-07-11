@@ -717,3 +717,15 @@ body {
   .module-screen .section-heading { padding: 15px; }
   .poncho-pattern { width: 220px; height: 140px; opacity: .10; }
 }
+
+/* V8 - refinamiento visual BNA + PONCHO */
+.menu-icon svg,.step-icon svg{width:24px;height:24px;fill:none;stroke:currentColor;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.module-chip{display:inline-flex;align-items:center;width:max-content;margin-top:12px;padding:5px 9px;border-radius:999px;background:color-mix(in srgb,var(--card-color) 10%,white);color:var(--card-color);font-size:.64rem;font-style:normal;font-weight:800;letter-spacing:.045em;text-transform:uppercase}
+.module-card{padding-bottom:22px}
+.module-card strong{font-size:1.12rem}
+.module-card>span:not(.menu-icon){max-width:78%}
+.section-heading .step svg{width:21px;height:21px}
+.card,.sector-browser,.terminal-module,.resource-card,.result-row,.kpi{backdrop-filter:saturate(110%)}
+.hero-copy h1{font-size:clamp(2rem,5vw,3.2rem)}
+.hero-copy p{max-width:560px}
+@media(max-width:680px){.module-card>span:not(.menu-icon){max-width:100%}.module-chip{margin-top:9px}}
