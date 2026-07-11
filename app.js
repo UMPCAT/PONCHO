@@ -73,6 +73,31 @@ const PERSONAS_CONFIG = {
   }
 };
 
+const SECTORES_COMERCIOS = [
+  "Pabellon Artesanos 1",
+  "Pabellon Artesanos 2",
+  "Poncho Diseño",
+  "Carpa Productos Regionales",
+  "Carpa Bodega y Delicatessen",
+  "Carpa Manualidades",
+  "Sector Comercial 1 (Camineria principal)",
+  "Feria Verde",
+  "Carpa Achalay 1",
+  "Carpa Achalay 2",
+  "Des. Social GOBIERNO",
+  "Des. Social MUNICIPALIDAD SFVC",
+  "PCPC",
+  "Sector Comercial (Mercado Cultural)",
+  "MECA",
+  "Food Truck",
+  "Food Truck (Mercado Cultural)",
+  "Pergola Cafeterias",
+  "Colectividades"
+];
+
+let sectorActivo = "";
+
+
 let agente = null;
 let tipoFormActual = null;
 let historialPantallas = [];
@@ -212,6 +237,7 @@ function irAlMenu() {
 
 function init() {
   $("#configAlert").hidden = IS_CONFIGURED;
+  renderSectoresComercios();
   try {
     const saved = localStorage.getItem("poncho2026_agente");
     agente = saved ? JSON.parse(saved) : null;
@@ -283,6 +309,94 @@ $$('[data-go]').forEach((button) => button.addEventListener("click", () => {
   if (destino === "dashboard") mostrarPantalla("screen-dashboard");
 }));
 
+
+function renderSectoresComercios() {
+  const cont = $("#listaSectores");
+  if (!cont) return;
+  cont.innerHTML = "";
+
+  SECTORES_COMERCIOS.forEach((sector, index) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sector-card";
+    button.dataset.sector = sector;
+    button.setAttribute("role", "listitem");
+    button.innerHTML = `
+      <span class="sector-number">${String(index + 1).padStart(2, "0")}</span>
+      <span class="sector-name">${escapeHtml(sector)}</span>
+      <span class="sector-arrow">→</span>`;
+    button.addEventListener("click", () => buscarPorSector(sector, button));
+    cont.appendChild(button);
+  });
+}
+
+function actualizarToolbarResultados(titulo, cantidad) {
+  const toolbar = $("#resultadosToolbar");
+  toolbar.hidden = false;
+  $("#resultadosTitulo").textContent = titulo;
+  $("#resultadosCantidad").textContent = `${formatNumber(cantidad)} ${cantidad === 1 ? "comercio" : "comercios"}`;
+}
+
+function marcarSectorActivo(sector) {
+  sectorActivo = sector || "";
+  $$(".sector-card").forEach((button) => {
+    button.classList.toggle("active", button.dataset.sector === sectorActivo);
+  });
+  $("#btnLimpiarSector").hidden = !sectorActivo;
+}
+
+async function buscarPorSector(sector, button) {
+  const cont = $("#resultadosComercios");
+  marcarSectorActivo(sector);
+  setBusy(button, true, "Cargando…");
+  showModal({
+    title: "Consultando sector",
+    message: sector,
+    loading: true
+  });
+  cont.innerHTML = '<div class="msg info">Cargando comercios del sector…</div>';
+
+  try {
+    const data = await gsGet({ action: "buscarComerciosPorSector", sector });
+    if (!data.ok) throw new Error(data.error || "No se pudo consultar el sector.");
+
+    const resultados = Array.isArray(data.resultados) ? data.resultados : [];
+    closeModal();
+    actualizarToolbarResultados(sector, resultados.length);
+    renderResultadosComercios(resultados);
+
+    if (!resultados.length) {
+      await modalAlert({
+        title: "Sector sin comercios",
+        message: `No hay registros cargados exactamente como “${sector}”. Revisá que el texto de la columna SECTOR coincida.`,
+        type: "warning"
+      });
+    }
+  } catch (error) {
+    closeModal();
+    cont.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`;
+    await modalAlert({ title: "No se pudo cargar el sector", message: error.message, type: "error" });
+  } finally {
+    setBusy(button, false);
+  }
+}
+
+function renderResultadosComercios(resultados) {
+  const cont = $("#resultadosComercios");
+  cont.innerHTML = "";
+  if (!resultados.length) {
+    cont.innerHTML = '<div class="empty-state"><strong>Sin resultados</strong><span>No hay comercios para mostrar.</span></div>';
+    return;
+  }
+  resultados.forEach((result) => cont.appendChild(renderResultadoComercio(result)));
+}
+
+$("#btnLimpiarSector").addEventListener("click", () => {
+  marcarSectorActivo("");
+  $("#resultadosToolbar").hidden = true;
+  $("#resultadosComercios").innerHTML = "";
+});
+
 $("#inBuscarComercio").addEventListener("keydown", (event) => { if (event.key === "Enter") buscarComercio(); });
 $("#btnBuscarComercio").addEventListener("click", buscarComercio);
 async function buscarComercio() {
@@ -299,10 +413,11 @@ async function buscarComercio() {
     const data = await gsGet({ action: "buscarComercio", q });
     if (!data.ok) throw new Error(data.error || "No se pudo realizar la búsqueda.");
     const resultados = Array.isArray(data.resultados) ? data.resultados : [];
-    if (!resultados.length) { closeModal(); cont.innerHTML = '<div class="msg info">No se encontraron coincidencias.</div>'; await modalAlert({ title: "Sin resultados", message: "No encontramos comercios con esos datos. Probá con CUIT/CUIL, razón social o nombre de fantasía.", type: "warning" }); return; }
+    if (!resultados.length) { closeModal(); marcarSectorActivo(""); actualizarToolbarResultados(`Resultados para “${q}”`, 0); cont.innerHTML = '<div class="empty-state"><strong>Sin coincidencias</strong><span>Probá con otro CUIT, razón social o nombre de fantasía.</span></div>'; await modalAlert({ title: "Sin resultados", message: "No encontramos comercios con esos datos. Probá con CUIT/CUIL, razón social o nombre de fantasía.", type: "warning" }); return; }
     closeModal();
-    cont.innerHTML = "";
-    resultados.slice(0, 30).forEach((result) => cont.appendChild(renderResultadoComercio(result)));
+    marcarSectorActivo("");
+    actualizarToolbarResultados(`Resultados para “${q}”`, resultados.length);
+    renderResultadosComercios(resultados.slice(0, 30));
     if (resultados.length > 30) showToast("Se muestran las primeras 30 coincidencias. Afiná la búsqueda.");
   } catch (error) { closeModal(); cont.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`; await modalAlert({ title: "Error de búsqueda", message: error.message, type: "error" }); }
   finally { setBusy(btn, false); }
@@ -313,18 +428,38 @@ function renderResultadoComercio(result) {
   const senalSi = isYes(result.senalizado);
   const card = document.createElement("article");
   card.className = "result-row";
+
+  const nombrePrincipal = result.nombreFantasia || result.razonSocial || "Sin denominación";
+  const razonSecundaria = result.nombreFantasia && result.razonSocial && result.nombreFantasia !== result.razonSocial
+    ? result.razonSocial
+    : "";
+
   card.innerHTML = `
     <div class="result-head">
-      <div><h3 class="result-title">${escapeHtml(result.razonSocial || "Sin razón social")}</h3><div class="result-meta">CUIT: ${escapeHtml(result.cuit || "-")}</div></div>
-      <div class="result-meta">Fila ${escapeHtml(result.rowNumber)}</div>
+      <div class="result-identity">
+        <span class="result-sector">${escapeHtml(result.sector || "Sector sin informar")}</span>
+        <h3 class="result-title">${escapeHtml(nombrePrincipal)}</h3>
+        ${razonSecundaria ? `<div class="result-legal">${escapeHtml(razonSecundaria)}</div>` : ""}
+      </div>
+      <span class="result-row-number">#${escapeHtml(result.rowNumber)}</span>
     </div>
-    <div class="tags"><span class="tag ${promoSi ? "si" : "no"}">Promo: ${promoSi ? "SÍ" : "NO"}</span><span class="tag ${senalSi ? "si" : "no"}">Señalizado: ${senalSi ? "SÍ" : "NO"}</span></div>
+
+    <div class="result-data">
+      <div><span>CUIT/CUIL</span><strong>${escapeHtml(result.cuit || "—")}</strong></div>
+      <div><span>Rubro</span><strong>${escapeHtml(result.rubro || "—")}</strong></div>
+      <div><span>+Pagos Nación</span><strong>${escapeHtml(result.masPagos || "—")}</strong></div>
+    </div>
+
+    <div class="tags">
+      <span class="tag ${promoSi ? "si" : "no"}">Promo ${promoSi ? "aceptada" : "pendiente"}</span>
+      <span class="tag ${senalSi ? "si" : "no"}">${senalSi ? "Señalizado" : "Sin señalizar"}</span>
+    </div>
     <div class="action-row"></div>`;
 
   const actions = card.querySelector(".action-row");
   const promoBtn = document.createElement("button");
   promoBtn.className = `btn ${promoSi ? "btn-danger" : "btn-secondary"}`;
-  promoBtn.textContent = promoSi ? "Quitar Promo" : "Marcar Promo aceptada";
+  promoBtn.textContent = promoSi ? "Quitar Promo" : "Marcar Promo";
   promoBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, !promoSi, senalSi, promoBtn));
 
   const signalBtn = document.createElement("button");

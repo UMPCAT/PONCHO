@@ -3,20 +3,20 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <meta name="theme-color" content="#0a6675">
+  <meta name="theme-color" content="#007f95">
   <meta name="description" content="Aplicación operativa PONCHO 2026 · Equipo NOA Oeste · Medios de Pago">
   <title>PONCHO 2026 · Equipo NOA Oeste</title>
 
   <!-- En este repositorio los archivos están en la raíz. -->
-  <link rel="stylesheet" href="./style.css?v=3">
+  <link rel="stylesheet" href="./style.css?v=4">
   <link rel="manifest" href="./manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 
   <script>
     /* Reemplazar por la URL /exec de la implementación de Google Apps Script. */
-    window.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbylSSoVzJMhexfHp9WWgUu5nSFd-7Nm8VjPOxeAK9tbGHtHXlHtUHwn4nDl9OZ1MvP1/exec";
+    window.APPS_SCRIPT_URL = "PEGAR_AQUI_LA_URL_DE_APPS_SCRIPT";
   </script>
-  <script src="./app.js?v=3" defer></script>
+  <script src="./app.js?v=4" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -114,12 +114,37 @@
           <div><h2 id="titulo-comercios">Comercios</h2><p>Buscá por CUIT/CUIL, razón social o nombre de fantasía.</p></div>
         </div>
         <div class="card search-card">
+          <div class="search-card-head">
+            <div>
+              <span class="overline">BÚSQUEDA INDIVIDUAL</span>
+              <h3>Encontrar un comercio</h3>
+            </div>
+          </div>
           <label for="inBuscarComercio">CUIT/CUIL, razón social o nombre de fantasía</label>
           <div class="search-row">
-            <input id="inBuscarComercio" type="search" autocomplete="off" placeholder="Ej.: 30-12345678-9, razón social o nombre del comercio">
+            <input id="inBuscarComercio" type="search" autocomplete="off" placeholder="Ingresá CUIT, razón social o nombre">
             <button class="btn btn-primary compact" id="btnBuscarComercio" type="button">Buscar</button>
           </div>
-          <small>La búsqueda no distingue mayúsculas, tildes ni guiones.</small>
+          <small>La búsqueda no distingue mayúsculas, tildes, espacios ni guiones.</small>
+        </div>
+
+        <section class="sector-browser" aria-labelledby="titulo-sectores">
+          <div class="sector-browser-head">
+            <div>
+              <span class="overline">RECORRIDO POR UBICACIÓN</span>
+              <h3 id="titulo-sectores">Ver comercios por sector</h3>
+              <p>Seleccioná la carpa o sector donde estás trabajando.</p>
+            </div>
+            <button class="btn btn-ghost compact" id="btnLimpiarSector" type="button" hidden>Limpiar filtro</button>
+          </div>
+          <div class="sector-grid" id="listaSectores" role="list"></div>
+        </section>
+
+        <div class="results-toolbar" id="resultadosToolbar" hidden>
+          <div>
+            <strong id="resultadosTitulo">Resultados</strong>
+            <span id="resultadosCantidad"></span>
+          </div>
         </div>
         <div id="resultadosComercios" class="results-stack" aria-live="polite"></div>
       </section>
