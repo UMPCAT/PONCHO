@@ -1,202 +1,469 @@
-:root {
-  --teal: #1996a6;
-  --teal-dark: #0f6b78;
-  --teal-light: #dceef0;
-  --bg: #f5f8f8;
-  --ink: #1c2b2e;
-  --gray: #5b6b6d;
-  --white: #ffffff;
-  --danger: #c0392b;
-  --ok: #2e8b57;
-  --radius: 14px;
-  --shadow: 0 2px 10px rgba(15, 107, 120, 0.12);
+"use strict";
+
+const APPS_SCRIPT_URL = String(window.APPS_SCRIPT_URL || "").trim();
+const IS_CONFIGURED = /^https:\/\/script\.google\.com\/macros\/s\/.+\/exec(?:\?.*)?$/.test(APPS_SCRIPT_URL);
+
+const PERSONAS_CONFIG = {
+  "alta-tarjeta": {
+    label: "Alta de tarjeta",
+    description: "Registro de nueva tarjeta Visa o Mastercard.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "habilitacion-tc": {
+    label: "Habilitación de TC / MODO",
+    description: "Habilitación por llamada o adhesión a MODO.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "activacion-tc": {
+    label: "Activación de TC",
+    description: "Canje único por DNI. Controla importe y cupones.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "cantidadCupones", label: "Cantidad de cupones", type: "number", min: 1, step: 1 },
+      { name: "totalCompra", label: "Total de la compra ($)", type: "number", min: 0, step: 0.01, help: "Para la mochila, el monto debe superar $200.000." },
+      { name: "marca", label: "Marca", type: "select", options: ["Visa", "Mastercard"] }
+    ]
+  },
+  "elegi-mas": {
+    label: "Elegí Más",
+    description: "Canje único por ID de voucher.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "idVoucher", label: "ID de voucher", type: "text", maxLength: 60 }
+    ]
+  },
+  prestamos: {
+    label: "Préstamos",
+    description: "Asesoramiento o solicitud cursada.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "linea", label: "Línea", type: "select", options: ["Adelanto", "Personal", "Viaja+", "Más Autos"] },
+      { name: "monto", label: "Monto ($)", type: "number", min: 0, step: 0.01 }
+    ]
+  },
+  seguros: {
+    label: "Seguros",
+    description: "Producto asesorado o contratado.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "linea", label: "Línea / producto", type: "text", maxLength: 80 },
+      { name: "monto", label: "Monto / prima ($)", type: "number", min: 0, step: 0.01 }
+    ]
+  },
+  "app-bna": {
+    label: "App BNA+",
+    description: "Alta, migración o asesoramiento.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "accion", label: "Acción", type: "select", options: ["Alta", "Migración nueva app", "Asesoramiento"] }
+    ]
+  }
+};
+
+let agente = null;
+let tipoFormActual = null;
+let historialPantallas = [];
+let charts = {};
+let toastTimer = null;
+
+const $ = (selector) => document.querySelector(selector);
+const $$ = (selector) => [...document.querySelectorAll(selector)];
+
+function normalizarTexto(value) {
+  return String(value || "").normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().trim();
+}
+function soloDigitos(value) { return String(value || "").replace(/\D/g, ""); }
+function escapeHtml(value) {
+  return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
+}
+function formatNumber(value) { return new Intl.NumberFormat("es-AR").format(Number(value || 0)); }
+function getAgenteHeader() { return agente ? `${agente.legajo} · ${agente.nombre} · ${agente.sucursal}` : ""; }
+
+function showToast(text) {
+  const toast = $("#toast");
+  toast.textContent = text;
+  toast.classList.add("show");
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => toast.classList.remove("show"), 2600);
+}
+function setMessage(el, type, text) {
+  el.className = `msg${type ? ` ${type}` : ""}`;
+  el.textContent = text || "";
+}
+function setBusy(button, busy, busyText = "Procesando…") {
+  if (!button) return;
+  if (busy) {
+    button.dataset.originalText = button.textContent;
+    button.textContent = busyText;
+    button.disabled = true;
+  } else {
+    button.textContent = button.dataset.originalText || button.textContent;
+    button.disabled = false;
+  }
+}
+function requireConfigured() {
+  if (IS_CONFIGURED) return true;
+  $("#configAlert").hidden = false;
+  showToast("Primero conectá la URL de Apps Script.");
+  return false;
 }
 
-* { box-sizing: border-box; }
-
-body {
-  margin: 0;
-  font-family: -apple-system, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-  background: var(--bg);
-  color: var(--ink);
+async function fetchJson(url, options = {}) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 25000);
+  try {
+    const response = await fetch(url, { ...options, signal: controller.signal, cache: "no-store" });
+    const text = await response.text();
+    let data;
+    try { data = JSON.parse(text); }
+    catch { throw new Error("El servidor no devolvió JSON válido. Revisá la implementación de Apps Script."); }
+    if (!response.ok) throw new Error(data.error || `Error HTTP ${response.status}`);
+    return data;
+  } catch (error) {
+    if (error.name === "AbortError") throw new Error("La consulta demoró demasiado. Probá nuevamente.");
+    throw error;
+  } finally { clearTimeout(timer); }
+}
+async function gsGet(params) {
+  if (!requireConfigured()) throw new Error("La app todavía no está conectada.");
+  const url = new URL(APPS_SCRIPT_URL);
+  Object.entries(params).forEach(([key, value]) => url.searchParams.set(key, value));
+  url.searchParams.set("_", Date.now());
+  return fetchJson(url.toString(), { method: "GET", redirect: "follow" });
+}
+async function gsPost(payload) {
+  if (!requireConfigured()) throw new Error("La app todavía no está conectada.");
+  return fetchJson(APPS_SCRIPT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "text/plain;charset=utf-8" },
+    body: JSON.stringify(payload),
+    redirect: "follow"
+  });
 }
 
-.topbar {
-  background: var(--teal-dark);
-  color: white;
-  padding: 14px 18px;
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  position: sticky;
-  top: 0;
-  z-index: 10;
-  box-shadow: var(--shadow);
+function mostrarPantalla(id, { push = true } = {}) {
+  $$(".screen").forEach((screen) => screen.classList.remove("active"));
+  const next = document.getElementById(id);
+  if (!next) return;
+  next.classList.add("active");
+  if (push && historialPantallas.at(-1) !== id) historialPantallas.push(id);
+  $("#btnBack").classList.toggle("show", historialPantallas.length > 1);
+  window.scrollTo({ top: 0, behavior: "smooth" });
+  if (id === "screen-dashboard") cargarDashboard();
+}
+function irAlMenu() {
+  historialPantallas = ["screen-menu"];
+  mostrarPantalla("screen-menu", { push: false });
 }
 
-.topbar .brand {
-  font-weight: 700;
-  font-size: 18px;
-  letter-spacing: 0.3px;
+function init() {
+  $("#configAlert").hidden = IS_CONFIGURED;
+  try {
+    const saved = localStorage.getItem("poncho2026_agente");
+    agente = saved ? JSON.parse(saved) : null;
+  } catch { localStorage.removeItem("poncho2026_agente"); }
+
+  if (agente?.legajo && agente?.nombre && agente?.sucursal) {
+    actualizarChip();
+    irAlMenu();
+  } else {
+    historialPantallas = ["screen-enrolamiento"];
+    mostrarPantalla("screen-enrolamiento", { push: false });
+  }
+
+  if ("serviceWorker" in navigator && location.protocol === "https:") {
+    navigator.serviceWorker.register("./sw.js").catch(() => {});
+  }
+}
+function actualizarChip() {
+  const chip = $("#chipAgente");
+  chip.hidden = !agente;
+  chip.textContent = agente ? `${agente.legajo} · ${agente.nombre.split(",")[0]}` : "";
 }
 
-.topbar .agente-chip {
-  margin-left: auto;
-  font-size: 13px;
-  background: rgba(255,255,255,0.15);
-  padding: 6px 10px;
-  border-radius: 999px;
+$("#btnBack").addEventListener("click", () => {
+  if (historialPantallas.length <= 1) return;
+  historialPantallas.pop();
+  mostrarPantalla(historialPantallas.at(-1), { push: false });
+});
+$("#chipAgente").addEventListener("click", () => {
+  if (!confirm("¿Querés cerrar la sesión de este agente en este dispositivo?")) return;
+  localStorage.removeItem("poncho2026_agente");
+  agente = null;
+  actualizarChip();
+  historialPantallas = ["screen-enrolamiento"];
+  mostrarPantalla("screen-enrolamiento", { push: false });
+});
+
+$("#inLegajo").addEventListener("input", (event) => { event.target.value = soloDigitos(event.target.value).slice(0, 5); });
+$("#btnEnrolar").addEventListener("click", async () => {
+  const nombre = $("#inApellidoNombre").value.trim().replace(/\s+/g, " ");
+  const legajo = soloDigitos($("#inLegajo").value);
+  const sucursal = $("#inSucursal").value;
+  const msg = $("#msgEnrolamiento");
+  const btn = $("#btnEnrolar");
+  setMessage(msg, "", "");
+
+  if (nombre.length < 4 || !/^\d{5}$/.test(legajo) || !sucursal) {
+    setMessage(msg, "warn", "Completá apellido y nombre, un legajo de 5 números y la sucursal.");
+    return;
+  }
+
+  setBusy(btn, true, "Registrando…");
+  try {
+    const data = await gsPost({ action: "registrarAgente", legajo, apellidoNombre: nombre, sucursal });
+    if (!data.ok) throw new Error(data.error || "No se pudo registrar el agente.");
+    agente = { legajo, nombre, sucursal };
+    localStorage.setItem("poncho2026_agente", JSON.stringify(agente));
+    actualizarChip();
+    showToast(data.nuevo ? "Agente registrado correctamente." : "Agente reconocido.");
+    irAlMenu();
+  } catch (error) { setMessage(msg, "warn", error.message); }
+  finally { setBusy(btn, false); }
+});
+
+$$('[data-go]').forEach((button) => button.addEventListener("click", () => {
+  const destino = button.dataset.go;
+  if (destino === "comercios") mostrarPantalla("screen-comercios");
+  if (destino === "personas") { renderListaSubmenus(); mostrarPantalla("screen-personas"); }
+  if (destino === "dashboard") mostrarPantalla("screen-dashboard");
+}));
+
+$("#inBuscarComercio").addEventListener("keydown", (event) => { if (event.key === "Enter") buscarComercio(); });
+$("#btnBuscarComercio").addEventListener("click", buscarComercio);
+async function buscarComercio() {
+  const input = $("#inBuscarComercio");
+  const q = input.value.trim();
+  const cont = $("#resultadosComercios");
+  const btn = $("#btnBuscarComercio");
+  if (q.length < 2) { cont.innerHTML = '<div class="msg warn">Ingresá al menos 2 caracteres.</div>'; return; }
+
+  setBusy(btn, true, "Buscando…");
+  cont.innerHTML = '<div class="msg info">Buscando comercios…</div>';
+  try {
+    const data = await gsGet({ action: "buscarComercio", q });
+    if (!data.ok) throw new Error(data.error || "No se pudo realizar la búsqueda.");
+    const resultados = Array.isArray(data.resultados) ? data.resultados : [];
+    if (!resultados.length) { cont.innerHTML = '<div class="msg info">No se encontraron coincidencias.</div>'; return; }
+    cont.innerHTML = "";
+    resultados.slice(0, 30).forEach((result) => cont.appendChild(renderResultadoComercio(result)));
+    if (resultados.length > 30) showToast("Se muestran las primeras 30 coincidencias. Afiná la búsqueda.");
+  } catch (error) { cont.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`; }
+  finally { setBusy(btn, false); }
+}
+function isYes(value) { return ["si", "sí", "true", "1", "x"].includes(normalizarTexto(value)); }
+function renderResultadoComercio(result) {
+  const promoSi = isYes(result.promo);
+  const senalSi = isYes(result.senalizado);
+  const card = document.createElement("article");
+  card.className = "result-row";
+  const fantasia = result.nombreFantasia ? `<div class="result-meta"><strong>Nombre de fantasía:</strong> ${escapeHtml(result.nombreFantasia)}</div>` : "";
+  const rubro = result.rubro ? `<div class="result-meta"><strong>Rubro:</strong> ${escapeHtml(result.rubro)}</div>` : "";
+  const sector = result.sector ? `<div class="result-meta"><strong>Sector:</strong> ${escapeHtml(result.sector)}</div>` : "";
+  const masPagos = result.masPagos ? `<div class="result-meta"><strong>+Pagos Nación:</strong> ${escapeHtml(result.masPagos)}</div>` : "";
+  card.innerHTML = `
+    <div class="result-head">
+      <div>
+        <h3 class="result-title">${escapeHtml(result.razonSocial || "Sin razón social")}</h3>
+        <div class="result-meta"><strong>CUIT/CUIL:</strong> ${escapeHtml(result.cuit || "-")}</div>
+        ${fantasia}${rubro}${sector}${masPagos}
+      </div>
+      <div class="result-meta">Fila ${escapeHtml(result.rowNumber)}</div>
+    </div>
+    <div class="tags"><span class="tag ${promoSi ? "si" : "no"}">Promo: ${promoSi ? "SÍ" : "NO"}</span><span class="tag ${senalSi ? "si" : "no"}">Señalizado: ${senalSi ? "SÍ" : "NO"}</span></div>
+    <div class="action-row"></div>`;
+
+  const actions = card.querySelector(".action-row");
+  const promoBtn = document.createElement("button");
+  promoBtn.className = `btn ${promoSi ? "btn-danger" : "btn-secondary"}`;
+  promoBtn.textContent = promoSi ? "Quitar Promo" : "Marcar Promo aceptada";
+  promoBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, !promoSi, senalSi, promoBtn));
+
+  const signalBtn = document.createElement("button");
+  signalBtn.className = `btn ${senalSi ? "btn-danger" : "btn-secondary"}`;
+  signalBtn.textContent = senalSi ? "Quitar señalización" : "Marcar señalizado";
+  signalBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, promoSi, !senalSi, signalBtn));
+  actions.append(promoBtn, signalBtn);
+  return card;
+}
+async function actualizarComercio(rowNumber, promo, senalizado, button) {
+  setBusy(button, true, "Guardando…");
+  try {
+    const data = await gsPost({ action: "actualizarComercio", rowNumber, promo: promo ? "Si" : "No", senalizado: senalizado ? "Si" : "No", agente: getAgenteHeader() });
+    if (!data.ok) throw new Error(data.error || "No se pudo actualizar el comercio.");
+    showToast("Estado del comercio actualizado.");
+    await buscarComercio();
+  } catch (error) { alert(`Error al actualizar: ${error.message}`); }
+  finally { setBusy(button, false); }
 }
 
-.back-btn {
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  padding: 4px 8px;
-  display: none;
+function renderListaSubmenus() {
+  const cont = $("#listaSubmenus");
+  cont.innerHTML = "";
+  Object.entries(PERSONAS_CONFIG).forEach(([key, config]) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "submenu-btn";
+    button.innerHTML = `<strong>${escapeHtml(config.label)}</strong><span>${escapeHtml(config.description)}</span>`;
+    button.addEventListener("click", () => abrirFormPersonas(key));
+    cont.appendChild(button);
+  });
 }
-.back-btn.show { display: inline-block; }
+function abrirFormPersonas(tipo) {
+  tipoFormActual = tipo;
+  const config = PERSONAS_CONFIG[tipo];
+  $("#tituloForm").textContent = config.label;
+  $("#subtituloForm").textContent = config.description;
+  const form = $("#formPersonas");
+  form.innerHTML = "";
 
-main {
-  max-width: 720px;
-  margin: 0 auto;
-  padding: 18px 16px 60px;
+  config.campos.forEach((campo) => {
+    const wrap = document.createElement("div");
+    wrap.className = "field-wrap";
+    const label = document.createElement("label");
+    label.htmlFor = `field-${campo.name}`;
+    label.textContent = campo.label;
+    wrap.appendChild(label);
+
+    let control;
+    if (campo.type === "select") {
+      control = document.createElement("select");
+      control.innerHTML = '<option value="">Seleccionar…</option>' + campo.options.map((option) => `<option value="${escapeHtml(option)}">${escapeHtml(option)}</option>`).join("");
+    } else {
+      control = document.createElement("input");
+      control.type = campo.type;
+      if (campo.inputmode) control.inputMode = campo.inputmode;
+      if (campo.maxLength) control.maxLength = campo.maxLength;
+      if (campo.min !== undefined) control.min = campo.min;
+      if (campo.step !== undefined) control.step = campo.step;
+      if (campo.pattern === "dni") control.addEventListener("input", (event) => { event.target.value = soloDigitos(event.target.value).slice(0, 8); });
+    }
+    control.id = `field-${campo.name}`;
+    control.name = campo.name;
+    control.required = true;
+    wrap.appendChild(control);
+    if (campo.help) { const help = document.createElement("small"); help.className = "field-help"; help.textContent = campo.help; wrap.appendChild(help); }
+    form.appendChild(wrap);
+  });
+
+  const submit = document.createElement("button");
+  submit.type = "submit";
+  submit.className = "btn btn-primary";
+  submit.textContent = "Registrar acción";
+  form.appendChild(submit);
+  form.onsubmit = (event) => { event.preventDefault(); registrarPersona(submit); };
+  setMessage($("#msgPersonas"), "", "");
+  mostrarPantalla("screen-form-personas");
 }
+async function registrarPersona(button) {
+  const config = PERSONAS_CONFIG[tipoFormActual];
+  const form = $("#formPersonas");
+  const msg = $("#msgPersonas");
+  const payload = { action: "registrarPersona", tipo: tipoFormActual, agente: getAgenteHeader() };
+  let invalid = false;
 
-.screen { display: none; }
-.screen.active { display: block; animation: fadeIn .18s ease; }
+  config.campos.forEach((campo) => {
+    const control = form.elements[campo.name];
+    let value = String(control.value || "").trim();
+    if (campo.pattern === "dni") value = soloDigitos(value);
+    const validDni = campo.pattern !== "dni" || /^\d{7,8}$/.test(value);
+    const valid = value !== "" && validDni && (campo.type !== "number" || Number(value) >= Number(campo.min ?? 0));
+    control.setAttribute("aria-invalid", String(!valid));
+    if (!valid) invalid = true;
+    payload[campo.name] = value;
+  });
 
-@keyframes fadeIn { from { opacity: 0; transform: translateY(4px);} to { opacity: 1; transform: none; } }
+  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) <= 200000) {
+    setMessage(msg, "warn", "El monto informado no supera $200.000. Revisalo antes de entregar la mochila.");
+    return;
+  }
+  if (invalid) { setMessage(msg, "warn", "Revisá los campos marcados. El DNI debe tener 7 u 8 números."); return; }
 
-h1.page-title {
-  font-size: 20px;
-  color: var(--teal-dark);
-  margin: 6px 0 18px;
-}
-
-.card {
-  background: var(--white);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-  padding: 18px;
-  margin-bottom: 16px;
-}
-
-.grid-menu {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 14px;
-}
-
-.menu-btn {
-  background: var(--white);
-  border: 2px solid var(--teal-light);
-  border-radius: var(--radius);
-  padding: 22px 12px;
-  text-align: center;
-  font-weight: 600;
-  font-size: 16px;
-  color: var(--teal-dark);
-  cursor: pointer;
-  box-shadow: var(--shadow);
-  transition: transform .12s ease, border-color .12s ease;
-}
-.menu-btn:active { transform: scale(0.97); }
-.menu-btn:hover { border-color: var(--teal); }
-.menu-btn .sub { display:block; font-weight: 400; font-size: 12px; color: var(--gray); margin-top: 4px; }
-
-.list-submenu { display: flex; flex-direction: column; gap: 10px; }
-.list-submenu button {
-  text-align: left;
-  padding: 16px;
-  border-radius: var(--radius);
-  border: 1px solid #e1e8e8;
-  background: var(--white);
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--ink);
-  cursor: pointer;
-  box-shadow: var(--shadow);
-}
-.list-submenu button:hover { border-color: var(--teal); }
-
-label {
-  display: block;
-  font-size: 13px;
-  color: var(--gray);
-  margin: 12px 0 4px;
-  font-weight: 600;
-}
-input, select {
-  width: 100%;
-  padding: 12px;
-  border-radius: 10px;
-  border: 1px solid #cfd8d8;
-  font-size: 15px;
-  background: #fbfdfd;
-}
-input:focus, select:focus { outline: 2px solid var(--teal); border-color: var(--teal); }
-
-.btn-primary {
-  width: 100%;
-  padding: 14px;
-  margin-top: 20px;
-  border: none;
-  border-radius: 12px;
-  background: var(--teal-dark);
-  color: white;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
-}
-.btn-primary:active { background: var(--teal); }
-
-.btn-secondary {
-  width: 100%;
-  padding: 12px;
-  margin-top: 10px;
-  border: 1px solid var(--teal-dark);
-  border-radius: 12px;
-  background: transparent;
-  color: var(--teal-dark);
-  font-size: 14px;
-  font-weight: 600;
-  cursor: pointer;
+  setBusy(button, true, "Registrando…");
+  setMessage(msg, "", "");
+  try {
+    const data = await gsPost(payload);
+    if (!data.ok) throw new Error(data.error || "No se pudo registrar la acción.");
+    if (data.duplicado) { setMessage(msg, "warn", data.mensaje); return; }
+    setMessage(msg, "ok", data.mensaje || "Acción registrada correctamente.");
+    form.reset();
+    showToast("Registro guardado en Google Sheets.");
+    setTimeout(() => {
+      historialPantallas.pop();
+      mostrarPantalla("screen-personas", { push: false });
+    }, 1500);
+  } catch (error) { setMessage(msg, "warn", error.message); }
+  finally { setBusy(button, false); }
 }
 
-.msg {
-  margin-top: 14px;
-  padding: 12px 14px;
-  border-radius: 10px;
-  font-size: 14px;
-  font-weight: 600;
-  display: none;
+$("#btnRefrescarDashboard").addEventListener("click", cargarDashboard);
+async function cargarDashboard() {
+  const kpis = $("#kpis");
+  const status = $("#dashboardStatus");
+  status.textContent = "Actualizando datos…";
+  kpis.innerHTML = '<div class="msg info">Cargando tablero…</div>';
+  try {
+    if (typeof Chart === "undefined") throw new Error("No se pudo cargar Chart.js. Revisá la conexión a Internet.");
+    const data = await gsGet({ action: "dashboardResumen" });
+    if (!data.ok) throw new Error(data.error || "No se pudo cargar el dashboard.");
+
+    kpis.innerHTML = `
+      <article class="kpi"><div class="num">${formatNumber(data.totalRegistros)}</div><div class="lbl">Registros de personas</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.total)}</div><div class="lbl">Comercios inscriptos</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.promo)}</div><div class="lbl">Con Promo aceptada</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.comercios.senalizado)}</div><div class="lbl">Comercios señalizados</div></article>`;
+
+    const tipos = Object.keys(data.datosPorTipo || {});
+    renderChart("chartModulos", "bar", tipos.map((key) => data.datosPorTipo[key].label), [{ label: "Registros", data: tipos.map((key) => data.datosPorTipo[key].cantidad), backgroundColor: "#0f8191", borderRadius: 7 }]);
+
+    const daily = Array.isArray(data.serieDiaria) ? data.serieDiaria : [];
+    renderChart("chartDiario", "line", daily.map((row) => row.dia), tipos.map((key, index) => ({ label: data.datosPorTipo[key].label, data: daily.map((row) => row[key] || 0), borderColor: palette(index), backgroundColor: palette(index), pointRadius: 2, tension: .28, fill: false })));
+
+    const agents = Array.isArray(data.topAgentes) ? data.topAgentes : [];
+    renderChart("chartAgentes", "bar", agents.map((item) => item.agente), [{ label: "Registros", data: agents.map((item) => item.cantidad), backgroundColor: "#202a4b", borderRadius: 6 }], { indexAxis: "y" });
+
+    const commerce = data.comercios || { total: 0, promo: 0, senalizado: 0, ambos: 0 };
+    const ambos = Number(commerce.ambos || 0);
+    const soloPromo = Math.max(Number(commerce.promo || 0) - ambos, 0);
+    const soloSenal = Math.max(Number(commerce.senalizado || 0) - ambos, 0);
+    const sinGestion = Math.max(Number(commerce.total || 0) - ambos - soloPromo - soloSenal, 0);
+    renderChart("chartComercios", "doughnut", ["Promo y señalizado", "Solo Promo", "Solo señalizado", "Sin gestión"], [{ data: [ambos, soloPromo, soloSenal, sinGestion], backgroundColor: ["#0f8191", "#c3a247", "#aab8db", "#d9e3e4"], borderWidth: 0 }], {}, true);
+
+    status.textContent = `Última actualización: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "medium" }).format(new Date())}`;
+  } catch (error) {
+    kpis.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`;
+    status.textContent = "No fue posible actualizar el tablero.";
+  }
 }
-.msg.ok { display: block; background: #e5f5ec; color: var(--ok); border: 1px solid #bfe5cd; }
-.msg.warn { display: block; background: #fdecea; color: var(--danger); border: 1px solid #f6c1ba; }
-
-.result-row {
-  padding: 12px;
-  border: 1px solid #e1e8e8;
-  border-radius: 10px;
-  margin-bottom: 10px;
+function palette(index) { return ["#0f8191", "#202a4b", "#c3a247", "#a9342b", "#187448", "#7f4b8b", "#5f7074"][index % 7]; }
+function renderChart(canvasId, type, labels, datasets, extraOptions = {}, legend = type === "line" || type === "doughnut") {
+  const canvas = document.getElementById(canvasId);
+  if (!canvas) return;
+  if (charts[canvasId]) charts[canvasId].destroy();
+  charts[canvasId] = new Chart(canvas, {
+    type,
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      plugins: { legend: { display: legend, position: "bottom", labels: { boxWidth: 10, usePointStyle: true } } },
+      scales: type === "doughnut" ? {} : { x: { grid: { display: false }, ticks: { maxRotation: 35, minRotation: 0 } }, y: { beginAtZero: true, ticks: { precision: 0 }, grid: { color: "rgba(96,112,116,.12)" } } },
+      ...extraOptions
+    }
+  });
 }
-.result-row .estado { font-size: 12px; color: var(--gray); margin-top: 4px; }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 11px; font-weight: 700; margin-right: 6px; }
-.tag.si { background: #e5f5ec; color: var(--ok); }
-.tag.no { background: #f0f0f0; color: var(--gray); }
 
-.kpis { display: grid; grid-template-columns: repeat(2, 1fr); gap: 12px; margin-bottom: 16px; }
-.kpi { background: var(--white); border-radius: var(--radius); padding: 16px; box-shadow: var(--shadow); text-align: center; }
-.kpi .num { font-size: 26px; font-weight: 800; color: var(--teal-dark); }
-.kpi .lbl { font-size: 12px; color: var(--gray); margin-top: 2px; }
-
-canvas { max-width: 100%; }
-
-.footer-note { text-align: center; color: var(--gray); font-size: 12px; margin-top: 30px; }
-
-@media (min-width: 640px) {
-  .kpis { grid-template-columns: repeat(4, 1fr); }
-}
+document.addEventListener("DOMContentLoaded", init);
