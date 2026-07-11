@@ -1,0 +1,109 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>PONCHO 2026 · App de Agentes</title>
+<link rel="stylesheet" href="/css/style.css" />
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+
+<!-- ======================================================================
+     CONFIGURACIÓN: pegar acá abajo la URL de tu implementación de Apps
+     Script (la que termina en /exec). Es la ÚNICA línea que hay que tocar
+     para dejar la app funcionando.
+     Ejemplo: "https://script.google.com/macros/s/AKfycb.../exec"
+     ====================================================================== -->
+<script>
+  window.APPS_SCRIPT_URL = "PEGAR_AQUI_LA_URL_DE_APPS_SCRIPT";
+</script>
+
+</head>
+<body>
+
+<div class="topbar">
+  <button class="back-btn" id="btnBack">←</button>
+  <div class="brand">PONCHO 2026</div>
+  <div class="agente-chip" id="chipAgente" style="display:none"></div>
+</div>
+
+<main>
+
+  <!-- ENROLAMIENTO -->
+  <section class="screen active" id="screen-enrolamiento">
+    <h1 class="page-title">Registro de agente</h1>
+    <div class="card">
+      <p style="color:var(--gray); font-size:14px; margin-top:0;">Ingresá tus datos una sola vez. No se van a volver a pedir en este dispositivo.</p>
+      <label>Apellido y Nombre</label>
+      <input id="inApellidoNombre" type="text" placeholder="Ej: Pérez, Juan" />
+      <label>Legajo (5 números)</label>
+      <input id="inLegajo" type="text" inputmode="numeric" maxlength="5" placeholder="Ej: 12345" />
+      <button class="btn-primary" id="btnEnrolar">Ingresar</button>
+      <div class="msg" id="msgEnrolamiento"></div>
+    </div>
+  </section>
+
+  <!-- MENU PRINCIPAL -->
+  <section class="screen" id="screen-menu">
+    <h1 class="page-title">Menú principal</h1>
+    <div class="grid-menu">
+      <div class="menu-btn" data-go="comercios">COMERCIOS<span class="sub">Consultar / cargar</span></div>
+      <div class="menu-btn" data-go="personas">PERSONAS<span class="sub">Registrar acciones</span></div>
+      <div class="menu-btn" data-go="dashboard">DASHBOARD<span class="sub">Analítica en vivo</span></div>
+    </div>
+  </section>
+
+  <!-- COMERCIOS -->
+  <section class="screen" id="screen-comercios">
+    <h1 class="page-title">Comercios</h1>
+    <div class="card">
+      <label>Buscar por CUIT o Razón Social</label>
+      <input id="inBuscarComercio" type="text" placeholder="Ej: 20-12345678-9 o Nombre del comercio" />
+      <button class="btn-primary" id="btnBuscarComercio">Buscar</button>
+    </div>
+    <div id="resultadosComercios"></div>
+  </section>
+
+  <!-- PERSONAS: LISTA DE SUBMENUS -->
+  <section class="screen" id="screen-personas">
+    <h1 class="page-title">Personas</h1>
+    <div class="list-submenu" id="listaSubmenus"></div>
+  </section>
+
+  <!-- PERSONAS: FORMULARIO DINAMICO -->
+  <section class="screen" id="screen-form-personas">
+    <h1 class="page-title" id="tituloForm">Formulario</h1>
+    <div class="card">
+      <form id="formPersonas"></form>
+      <div class="msg" id="msgPersonas"></div>
+    </div>
+  </section>
+
+  <!-- DASHBOARD -->
+  <section class="screen" id="screen-dashboard">
+    <h1 class="page-title">Dashboard · Analítica PONCHO 2026</h1>
+    <div class="kpis" id="kpis"></div>
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--teal-dark);">Registros por módulo</h3>
+      <canvas id="chartModulos" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--teal-dark);">Evolución diaria (últimos 14 días)</h3>
+      <canvas id="chartDiario" height="220"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--teal-dark);">Top 5 agentes</h3>
+      <canvas id="chartAgentes" height="200"></canvas>
+    </div>
+    <div class="card">
+      <h3 style="margin-top:0; color:var(--teal-dark);">Comercios</h3>
+      <canvas id="chartComercios" height="200"></canvas>
+    </div>
+    <button class="btn-secondary" id="btnRefrescarDashboard">Actualizar datos</button>
+  </section>
+
+  <p class="footer-note">Equipo NOA Oeste · Medios de Pago · BNA</p>
+</main>
+
+<script src="/js/app.js"></script>
+</body>
+</html>
