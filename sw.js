@@ -1,11 +1,10 @@
-const CACHE = "poncho-2026-v4";
+const CACHE = "poncho-generico-v6";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./style.css",
   "./app.js",
   "./manifest.webmanifest",
-  "./banner-poncho-marcaton.png",
   "./poncho-azul.png",
   "./poncho-dorado.png",
   "./logo-bna.png"

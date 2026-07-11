@@ -239,9 +239,9 @@ function init() {
   $("#configAlert").hidden = IS_CONFIGURED;
   renderSectoresComercios();
   try {
-    const saved = localStorage.getItem("poncho2026_agente");
+    const saved = localStorage.getItem("poncho_agente") || localStorage.getItem("poncho2026_agente");
     agente = saved ? JSON.parse(saved) : null;
-  } catch { localStorage.removeItem("poncho2026_agente"); }
+  } catch { localStorage.removeItem("poncho_agente"); localStorage.removeItem("poncho2026_agente"); }
 
   if (agente?.legajo && agente?.nombre && agente?.sucursal) {
     actualizarChip();
@@ -268,7 +268,7 @@ $("#btnBack").addEventListener("click", () => {
 });
 $("#chipAgente").addEventListener("click", () => {
   if (!confirm("¿Querés cerrar la sesión de este agente en este dispositivo?")) return;
-  localStorage.removeItem("poncho2026_agente");
+  localStorage.removeItem("poncho_agente"); localStorage.removeItem("poncho2026_agente");
   agente = null;
   actualizarChip();
   historialPantallas = ["screen-enrolamiento"];
@@ -294,7 +294,7 @@ $("#btnEnrolar").addEventListener("click", async () => {
     const data = await gsPost({ action: "registrarAgente", legajo, apellidoNombre: nombre, sucursal });
     if (!data.ok) throw new Error(data.error || "No se pudo registrar el agente.");
     agente = { legajo, nombre, sucursal };
-    localStorage.setItem("poncho2026_agente", JSON.stringify(agente));
+    localStorage.setItem("poncho_agente", JSON.stringify(agente));
     actualizarChip();
     await modalAlert({ title: data.nuevo ? "Agente registrado" : "Bienvenido nuevamente", message: `${nombre}\n${sucursal}`, type: "success", buttonText: "Ingresar" });
     irAlMenu();
@@ -306,6 +306,7 @@ $$('[data-go]').forEach((button) => button.addEventListener("click", () => {
   const destino = button.dataset.go;
   if (destino === "comercios") mostrarPantalla("screen-comercios");
   if (destino === "personas") { renderListaSubmenus(); mostrarPantalla("screen-personas"); }
+  if (destino === "links") mostrarPantalla("screen-links");
   if (destino === "dashboard") mostrarPantalla("screen-dashboard");
 }));
 
@@ -407,7 +408,7 @@ async function buscarComercio() {
   if (q.length < 2) { cont.innerHTML = '<div class="msg warn">Ingresá al menos 2 caracteres.</div>'; return; }
 
   setBusy(btn, true, "Buscando…");
-  showModal({ title: "Buscando comercios", message: "Consultando la base de El Marcatón al Poncho 2026…", loading: true });
+  showModal({ title: "Buscando comercios", message: "Consultando la base de comercios de PONCHO…", loading: true });
   cont.innerHTML = '<div class="msg info">Buscando comercios…</div>';
   try {
     const data = await gsGet({ action: "buscarComercio", q });
@@ -466,7 +467,12 @@ function renderResultadoComercio(result) {
   signalBtn.className = `btn ${senalSi ? "btn-danger" : "btn-secondary"}`;
   signalBtn.textContent = senalSi ? "Quitar señalización" : "Marcar señalizado";
   signalBtn.addEventListener("click", () => actualizarComercio(result.rowNumber, promoSi, !senalSi, signalBtn));
-  actions.append(promoBtn, signalBtn);
+  const terminalBtn = document.createElement("button");
+  terminalBtn.className = "btn btn-terminal";
+  terminalBtn.textContent = "Registrar terminal";
+  terminalBtn.addEventListener("click", () => abrirRegistroTerminal(result.cuit || ""));
+
+  actions.append(promoBtn, signalBtn, terminalBtn);
   return card;
 }
 async function actualizarComercio(rowNumber, promo, senalizado, button) {
@@ -579,6 +585,97 @@ async function registrarPersona(button) {
   } catch (error) { closeModal(); await modalAlert({ title: "No se pudo registrar", message: error.message, type: "error" }); }
   finally { setBusy(button, false); }
 }
+
+
+function abrirRegistroTerminal(cuit = "") {
+  $("#inTerminalCuit").value = cuit || "";
+  $("#inTerminalOperacion").value = "";
+  $("#inTerminalSerie").value = "";
+  setMessage($("#msgTerminal"), "", "");
+  mostrarPantalla("screen-terminal");
+}
+
+$("#btnAbrirTerminal").addEventListener("click", () => abrirRegistroTerminal(""));
+$("#inTerminalCuit").addEventListener("input", (event) => {
+  event.target.value = soloDigitos(event.target.value).slice(0, 11);
+});
+
+$("#formTerminal").addEventListener("submit", async (event) => {
+  event.preventDefault();
+
+  const button = $("#btnRegistrarTerminal");
+  const cuit = soloDigitos($("#inTerminalCuit").value);
+  const operacion = $("#inTerminalOperacion").value;
+  const numeroSerie = $("#inTerminalSerie").value.trim();
+
+  if (!/^\d{11}$/.test(cuit)) {
+    await modalAlert({
+      title: "CUIT/CUIL inválido",
+      message: "Ingresá los 11 números del CUIT/CUIL del comercio.",
+      type: "warning"
+    });
+    return;
+  }
+  if (!["Entrega", "Venta"].includes(operacion)) {
+    await modalAlert({
+      title: "Seleccioná la operación",
+      message: "Indicá si la terminal fue entregada o vendida.",
+      type: "warning"
+    });
+    return;
+  }
+  if (numeroSerie.length < 3) {
+    await modalAlert({
+      title: "Número de serie incompleto",
+      message: "Ingresá el número de serie de la terminal.",
+      type: "warning"
+    });
+    return;
+  }
+
+  setBusy(button, true, "Registrando…");
+  showModal({
+    title: "Registrando terminal",
+    message: "Validando el CUIT y guardando la operación…",
+    loading: true
+  });
+
+  try {
+    const data = await gsPost({
+      action: "registrarTerminal",
+      cuit,
+      operacion,
+      numeroSerie,
+      agente: getAgenteHeader()
+    });
+
+    if (!data.ok) throw new Error(data.error || "No se pudo registrar la terminal.");
+
+    closeModal();
+    $("#formTerminal").reset();
+
+    await modalAlert({
+      title: "Terminal registrada",
+      message:
+        `${data.operacion}: ${data.numeroSerie}\n` +
+        `${data.nombreComercio || data.razonSocial || "Comercio"}\n` +
+        `CUIT/CUIL: ${data.cuit}`,
+      type: "success"
+    });
+
+    historialPantallas.pop();
+    mostrarPantalla("screen-comercios", { push: false });
+  } catch (error) {
+    closeModal();
+    await modalAlert({
+      title: "No se pudo registrar",
+      message: error.message,
+      type: "error"
+    });
+  } finally {
+    setBusy(button, false);
+  }
+});
 
 $("#btnRefrescarDashboard").addEventListener("click", cargarDashboard);
 async function cargarDashboard() {
