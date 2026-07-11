@@ -4,19 +4,19 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <meta name="theme-color" content="#007f95">
-  <meta name="description" content="Aplicación operativa PONCHO · Equipo NOA Oeste · Medios de Pago">
+  <meta name="description" content="Aplicación operativa PONCHO · Sistema Integral de Gestión Comercial para Eventos">
   <title>PONCHO · Equipo NOA Oeste</title>
 
   <!-- En este repositorio los archivos están en la raíz. -->
-  <link rel="stylesheet" href="./style.css?v=8">
+  <link rel="stylesheet" href="./style.css?v=9">
   <link rel="manifest" href="./manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 
   <script>
     /* Reemplazar por la URL /exec de la implementación de Google Apps Script. */
-    window.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbxE_Jx08ELhO6uUc1PmzP2KhZoZL6Wrgzr1hF2KJqAQr0qPmFZJE-W27eWDsoPOI9aG/exec";
+    window.APPS_SCRIPT_URL = "PEGAR_AQUI_LA_URL_DE_APPS_SCRIPT";
   </script>
-  <script src="./app.js?v=8" defer></script>
+  <script src="./app.js?v=9" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -25,7 +25,7 @@
       <div class="brand-lockup" aria-label="Banco Nación · PONCHO">
         <img class="bna-logo" src="./logo-bna.png" alt="Banco Nación">
         <div class="brand-text">
-          <strong>PONCHO</strong>
+          <strong>SIGECE</strong>
           <span>Equipo NOA Oeste · Medios de Pago</span>
         </div>
       </div>
@@ -39,11 +39,7 @@
             <span></span><span></span><span></span>
           </div>
           <div class="poncho-pattern" aria-hidden="true"></div>
-          <div class="hero-copy">
-            <span class="eyebrow">GESTIÓN OPERATIVA</span>
-            <h1>PONCHO</h1>
-            <p>Comercios, acciones comerciales y tablero de seguimiento.</p>
-          </div>
+          <div class="hero-copy"><span class="eyebrow">BANCO NACIÓN · GESTIÓN COMERCIAL</span><h1>SIGECE</h1><p>Implementación PONCHO · Control, registro y seguimiento en tiempo real.</p></div>
         </div>
       </section>
 
@@ -97,6 +93,7 @@
             <p>Elegí la gestión que vas a realizar.</p>
           </div>
         </div>
+        <div class="home-status-strip"><div><span class="status-dot"></span><strong>Operativo activo</strong></div><span>Registro trazable por agente, fecha y hora</span></div>
         <div class="grid-menu">
           <button class="menu-card module-card module-comercios" type="button" data-go="comercios">
             <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 10.5 12 3l9 7.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 19.5z"/><path d="M8.5 21v-7h7v7"/></svg></span><strong>Comercios</strong><span>Consultar, validar y señalizar</span><em class="module-chip">Gestión territorial</em>
@@ -105,10 +102,10 @@
             <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4.5 21c.8-4.2 3.2-6.5 7.5-6.5s6.7 2.3 7.5 6.5"/><path d="M19 4v5M16.5 6.5h5"/></svg></span><strong>Personas</strong><span>Registrar acciones y entregas</span><em class="module-chip">Acciones comerciales</em>
           </button>
           <button class="menu-card module-card module-links" type="button" data-go="links">
-            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14 21 3"/><path d="M14 3h7v7"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></span><strong>Links necesarios</strong><span>Formularios y contactos de soporte</span><em class="module-chip">Accesos rápidos</em>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14 21 3"/><path d="M14 3h7v7"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></span><strong>Recursos</strong><span>Formularios, QR y contactos útiles</span><em class="module-chip">Accesos rápidos</em>
           </button>
           <button class="menu-card module-card module-dashboard" type="button" data-go="dashboard">
-            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></svg></span><strong>Dashboard</strong><span>Seguimiento online y métricas del evento</span><em class="module-chip">Control en línea</em>
+            <span class="menu-icon"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></svg></span><strong>Dashboard</strong><span>Centro de control y seguimiento operativo</span><em class="module-chip">Control en línea</em>
           </button>
         </div>
       </section>
@@ -190,7 +187,7 @@
         <div class="section-heading">
           <span class="step step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 14 21 3"/><path d="M14 3h7v7"/><path d="M20 13v7a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1h7"/></svg></span>
           <div>
-            <h2 id="titulo-links">Links necesarios</h2>
+            <h2 id="titulo-links">Recursos</h2>
             <p>Accesos rápidos para la gestión diaria.</p>
           </div>
         </div>
@@ -201,47 +198,9 @@
              target="_blank" rel="noopener noreferrer">
             <span class="resource-icon">＋</span>
             <div>
-              <span class="overline">COMERCIO</span>
-              <strong>FORM - Cargar comercio en Promo</strong>
+              <span class="overline">FORMULARIO</span>
+              <strong>Cargar comercio en Promo</strong>
               <small>Abrir formulario de adhesión</small>
-            </div>
-            <span class="resource-arrow">↗</span>
-          </a>
-
-          <a class="resource-card resource-primary"
-   href="./altatc.png"
-   target="_blank"
-   rel="noopener noreferrer">
-
-  <span class="resource-icon">QR</span>
-
-  <div>
-    <span class="overline">PERSONAS</span>
-    <strong>ALTA TC - Solicitala ahora</strong>
-    <small>Mostrá este QR al cliente · Gratis por 9 meses</small>
-
-    <img
-      src="./altatc.png"
-      alt="QR para solicitar TC NOA OESTE"
-      style="
-        width: 100%;
-        max-width: 520px;
-        margin-top: 16px;
-        display: block;
-        border-radius: 14px;
-      "
-    >
-  </div>
-  <span class="resource-arrow">↗</span>
-</a> 
-          <a class="resource-card"
-             href="https://wa.me/5493834357350"
-             target="_blank" rel="noopener noreferrer">
-            <span class="resource-icon">W</span>
-            <div>
-              <span class="overline">WHATSAPP MEDIOS DE PAGO</span>
-              <strong>+549 3834357350</strong>
-              <small>Iniciar conversación, Enviar QR Estático</small>
             </div>
             <span class="resource-arrow">↗</span>
           </a>
@@ -275,26 +234,6 @@
               <strong>info@maspagos.com.ar</strong>
               <small>Redactar correo</small>
             </div>
-            <span class="resource-arrow">→</span>
-          </a>
-
-          <a class="resource-card" href="https://www.youtube.com/watch?v=BQeA_tYb9us&list=PLIinff-hDEz3Twwvbt0_zNmvQvD1jGMKr&index=2">
-            <span class="resource-icon">B</span>
-            <div>
-              <span class="overline">VIDEOS TUTORIALES NUEVA APP BNA+</span>
-              <strong>YOUTUBE</strong>
-              <small>Abrir sitio</small>
-  </div>
-            <span class="resource-arrow">→</span>
-          </a>
-          
-          <a class="resource-card" href="https://www.bna.com.ar/Home/TelefonosUtiles">
-            <span class="resource-icon">B</span>
-            <div>
-              <span class="overline">TELEFONOS UTILES BNA</span>
-              <strong>WWW.BNA.COM.AR</strong>
-              <small>Abrir sitio</small>
-  </div>
             <span class="resource-arrow">→</span>
           </a>
         </div>

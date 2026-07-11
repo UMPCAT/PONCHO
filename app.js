@@ -53,49 +53,15 @@ const PERSONAS_CONFIG = {
     ]
   },
   seguros: {
-  label: "Seguros",
-  description: "Producto asesorado o contratado.",
-  campos: [
-    {
-      name: "cliente",
-      label: "Cliente",
-      type: "text",
-      maxLength: 80
-    },
-    {
-      name: "dni",
-      label: "DNI",
-      type: "text",
-      inputmode: "numeric",
-      maxLength: 8,
-      pattern: "dni"
-    },
-    {
-      name: "linea",
-      label: "Línea / producto",
-      type: "select",
-      options: [
-        "Vida",
-        "Accidentes Personales",
-        "Automotor",
-        "Motos",
-        "Sepelios",
-        "Robo ATM",
-        "Hogar",
-        "Integral Comercio",
-        "Otros"
-      ]
-    },
-    {
-      name: "monto",
-      label: "Monto / prima ($)",
-      type: "number",
-      min: 0,
-      step: 0.01
-    }
-  ]
-},
-
+    label: "Seguros",
+    description: "Producto asesorado o contratado.",
+    campos: [
+      { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
+      { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
+      { name: "linea", label: "Línea / producto", type: "text", maxLength: 80 },
+      { name: "monto", label: "Monto / prima ($)", type: "number", min: 0, step: 0.01 }
+    ]
+  },
   "app-bna": {
     label: "App BNA+",
     description: "Alta, migración o asesoramiento.",
@@ -149,6 +115,18 @@ function escapeHtml(value) {
   return String(value ?? "").replace(/[&<>'"]/g, (char) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char]));
 }
 function formatNumber(value) { return new Intl.NumberFormat("es-AR").format(Number(value || 0)); }
+
+function animateNumber(element, target, duration = 500) {
+  const start = Number(element.textContent.replace(/\D/g, "")) || 0;
+  const end = Number(target) || 0;
+  const started = performance.now();
+  function tick(now) {
+    const progress = Math.min((now - started) / duration, 1);
+    element.textContent = formatNumber(Math.round(start + (end - start) * progress));
+    if (progress < 1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
 function getAgenteHeader() { return agente ? `${agente.legajo} · ${agente.nombre} · ${agente.sucursal}` : ""; }
 
 function showToast(text) {
