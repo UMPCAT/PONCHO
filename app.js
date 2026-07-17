@@ -625,7 +625,7 @@ async function registrarPersona(button) {
     payload[campo.name] = value;
   });
 
-  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) <= 100000) {
+  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) < 100000) {
     await modalAlert({ title: "Monto insuficiente", message: "El monto informado no supera $100.000. Revisalo antes de entregar la mochila.", type: "warning" });
     return;
   }
