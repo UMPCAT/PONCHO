@@ -625,8 +625,8 @@ async function registrarPersona(button) {
     payload[campo.name] = value;
   });
 
-  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) <= 200000) {
-    await modalAlert({ title: "Monto insuficiente", message: "El monto informado no supera $200.000. Revisalo antes de entregar la mochila.", type: "warning" });
+  if (tipoFormActual === "activacion-tc" && Number(payload.totalCompra) <= 100000) {
+    await modalAlert({ title: "Monto insuficiente", message: "El monto informado no supera $100.000. Revisalo antes de entregar la mochila.", type: "warning" });
     return;
   }
   if (invalid) { await modalAlert({ title: "Revisá los datos", message: "Hay campos incompletos o inválidos. El DNI debe tener 7 u 8 números.", type: "warning" }); return; }
