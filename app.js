@@ -29,7 +29,7 @@ const PERSONAS_CONFIG = {
       { name: "cliente", label: "Cliente", type: "text", maxLength: 80 },
       { name: "dni", label: "DNI", type: "text", inputmode: "numeric", maxLength: 8, pattern: "dni" },
       { name: "cantidadCupones", label: "Cantidad de cupones", type: "number", min: 1, step: 1 },
-      { name: "totalCompra", label: "Total de la compra ($)", type: "number", min: 0, step: 0.01, help: "Para acceder al premio, el monto debe superar $200.000." },
+      { name: "totalCompra", label: "Total de la compra ($)", type: "number", min: 0, step: 0.01, help: "Para acceder al premio, el monto debe superar $100.000." },
       { name: "marca", label: "Premio", type: "select", options: ["Mochila", "Pelota"] }
     ]
   },
