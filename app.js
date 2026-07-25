@@ -744,34 +744,92 @@ async function cargarDashboard() {
   const status = $("#dashboardStatus");
   status.textContent = "Actualizando datos…";
   kpis.innerHTML = '<div class="msg info">Cargando tablero…</div>';
+
   try {
     if (typeof Chart === "undefined") throw new Error("No se pudo cargar Chart.js. Revisá la conexión a Internet.");
     const data = await gsGet({ action: "dashboardResumen" });
     if (!data.ok) throw new Error(data.error || "No se pudo cargar el dashboard.");
 
+    const commerce = data.comercios || {};
+    const terminals = data.terminales || {};
+
     kpis.innerHTML = `
-      <article class="kpi"><div class="num">${formatNumber(data.totalRegistros)}</div><div class="lbl">Registros de personas</div></article>
-      <article class="kpi"><div class="num">${formatNumber(data.comercios.total)}</div><div class="lbl">Comercios inscriptos</div></article>
-      <article class="kpi"><div class="num">${formatNumber(data.comercios.promo)}</div><div class="lbl">Con Promo aceptada</div></article>
-      <article class="kpi"><div class="num">${formatNumber(data.comercios.senalizado)}</div><div class="lbl">Comercios señalizados</div></article>`;
+      <article class="kpi"><div class="num">${formatNumber(data.totalAcciones)}</div><div class="lbl">Acciones integrales</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.totalRegistros)}</div><div class="lbl">Acciones de Personas</div></article>
+      <article class="kpi"><div class="num">${formatNumber(commerce.gestionados)}</div><div class="lbl">Comercios gestionados</div></article>
+      <article class="kpi"><div class="num">${formatNumber(terminals.total)}</div><div class="lbl">Terminales registradas</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.agentesActivos)}</div><div class="lbl">Agentes activos</div></article>
+      <article class="kpi"><div class="num">${formatNumber(data.promedioPorAgente)}</div><div class="lbl">Promedio por agente</div></article>
+      <article class="kpi"><div class="num">${formatNumber(commerce.promo)}</div><div class="lbl">Comercios con Promo</div></article>
+      <article class="kpi"><div class="num">${formatNumber(commerce.senalizado)}</div><div class="lbl">Comercios señalizados</div></article>`;
 
     const tipos = Object.keys(data.datosPorTipo || {});
-    renderChart("chartModulos", "bar", tipos.map((key) => data.datosPorTipo[key].label), [{ label: "Registros", data: tipos.map((key) => data.datosPorTipo[key].cantidad), backgroundColor: "#079ec0", borderRadius: 7 }]);
+    renderChart("chartModulos", "bar",
+      tipos.map((key) => data.datosPorTipo[key].label),
+      [{ label: "Registros", data: tipos.map((key) => data.datosPorTipo[key].cantidad), backgroundColor: tipos.map((_, i) => palette(i)), borderRadius: 7 }],
+      {}, false
+    );
 
     const daily = Array.isArray(data.serieDiaria) ? data.serieDiaria : [];
-    renderChart("chartDiario", "line", daily.map((row) => row.dia), tipos.map((key, index) => ({ label: data.datosPorTipo[key].label, data: daily.map((row) => row[key] || 0), borderColor: palette(index), backgroundColor: palette(index), pointRadius: 2, tension: .28, fill: false })));
+    renderChart("chartDiario", "line", daily.map((row) => row.dia), [
+      { label: "Personas", data: daily.map((row) => row.personas || 0), borderColor: "#FF9654", backgroundColor: "#FF9654", pointRadius: 3, tension: .28, fill: false },
+      { label: "Comercios", data: daily.map((row) => row.comercios || 0), borderColor: "#00A7C4", backgroundColor: "#00A7C4", pointRadius: 3, tension: .28, fill: false },
+      { label: "Terminales", data: daily.map((row) => row.terminales || 0), borderColor: "#C2A24A", backgroundColor: "#C2A24A", pointRadius: 3, tension: .28, fill: false }
+    ]);
 
     const agents = Array.isArray(data.topAgentes) ? data.topAgentes : [];
-    renderChart("chartAgentes", "bar", agents.map((item) => item.agente), [{ label: "Registros", data: agents.map((item) => item.cantidad), backgroundColor: "#232b4d", borderRadius: 6 }], { indexAxis: "y" });
+    renderChart("chartAgentes", "bar", agents.map((item) => item.nombre || item.agente), [
+      { label: "Personas", data: agents.map((item) => item.personas || 0), backgroundColor: "#FF9654", borderRadius: 5 },
+      { label: "Comercios", data: agents.map((item) => item.comercios || 0), backgroundColor: "#00A7C4", borderRadius: 5 },
+      { label: "Terminales", data: agents.map((item) => item.terminales || 0), backgroundColor: "#C2A24A", borderRadius: 5 }
+    ], { indexAxis: "y", scales: { x: { stacked: true, beginAtZero: true, ticks: { precision: 0 } }, y: { stacked: true, grid: { display: false } } } }, true);
 
-    const commerce = data.comercios || { total: 0, promo: 0, senalizado: 0, ambos: 0 };
+    const rankingBody = $("#rankingAgentesBody");
+    rankingBody.innerHTML = agents.length ? agents.map((item, index) => `
+      <tr>
+        <td><span class="rank-position">${index + 1}</span></td>
+        <td><strong>${escapeHtml(item.nombre || item.agente)}</strong>${item.sucursal ? `<small>${escapeHtml(item.sucursal)}</small>` : ""}</td>
+        <td>${formatNumber(item.personas)}</td>
+        <td>${formatNumber(item.comercios)}</td>
+        <td>${formatNumber(item.terminales)}</td>
+        <td><strong>${formatNumber(item.total)}</strong></td>
+      </tr>`).join("") : '<tr><td colspan="6">Todavía no hay actividad registrada.</td></tr>';
+
     const ambos = Number(commerce.ambos || 0);
     const soloPromo = Math.max(Number(commerce.promo || 0) - ambos, 0);
     const soloSenal = Math.max(Number(commerce.senalizado || 0) - ambos, 0);
-    const sinGestion = Math.max(Number(commerce.total || 0) - ambos - soloPromo - soloSenal, 0);
-    renderChart("chartComercios", "doughnut", ["Promo y señalizado", "Solo Promo", "Solo señalizado", "Sin gestión"], [{ data: [ambos, soloPromo, soloSenal, sinGestion], backgroundColor: ["#079ec0", "#c3a13d", "#aab9df", "#d9e3e4"], borderWidth: 0 }], {}, true);
+    const gestionadosSinEstado = Math.max(Number(commerce.gestionados || 0) - ambos - soloPromo - soloSenal, 0);
+    const sinGestion = Math.max(Number(commerce.sinGestion || 0), 0);
+    renderChart("chartComercios", "doughnut",
+      ["Promo y señalizado", "Solo Promo", "Solo señalizado", "Gestionado sin estado", "Sin gestión"],
+      [{ data: [ambos, soloPromo, soloSenal, gestionadosSinEstado, sinGestion], backgroundColor: ["#0B6D7A", "#00A7C4", "#C2A24A", "#AAB9DF", "#E1E7E9"], borderWidth: 0 }],
+      {}, true
+    );
 
-    status.textContent = `Última actualización: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "medium" }).format(new Date())}`;
+    const commerceAgents = Array.isArray(data.rankingComercios) ? data.rankingComercios : [];
+    renderChart("chartAgentesComercios", "bar",
+      commerceAgents.map((item) => item.nombre || item.agente),
+      [{ label: "Comercios", data: commerceAgents.map((item) => item.comercios || 0), backgroundColor: "#00A7C4", borderRadius: 6 }],
+      { indexAxis: "y" }, false
+    );
+
+    renderChart("chartTerminales", "doughnut", ["Entregas", "Ventas"],
+      [{ data: [Number(terminals.entregas || 0), Number(terminals.ventas || 0)], backgroundColor: ["#C2A24A", "#0B6D7A"], borderWidth: 0 }],
+      {}, true
+    );
+
+    const sectors = Array.isArray(data.rankingSectores) ? data.rankingSectores : [];
+    renderChart("chartSectores", "bar",
+      sectors.map((item) => item.sector),
+      [
+        { label: "Gestionados", data: sectors.map((item) => item.gestionados || 0), backgroundColor: "#00A7C4", borderRadius: 5 },
+        { label: "Promo", data: sectors.map((item) => item.promo || 0), backgroundColor: "#0B6D7A", borderRadius: 5 },
+        { label: "Señalizados", data: sectors.map((item) => item.senalizado || 0), backgroundColor: "#C2A24A", borderRadius: 5 }
+      ],
+      {}, true
+    );
+
+    status.textContent = `Última actualización: ${new Intl.DateTimeFormat("es-AR", { dateStyle: "short", timeStyle: "medium" }).format(new Date())}. Comercios: se atribuyen al último agente registrado en cada fila.`;
   } catch (error) {
     kpis.innerHTML = `<div class="msg warn">${escapeHtml(error.message)}</div>`;
     status.textContent = "No fue posible actualizar el tablero.";

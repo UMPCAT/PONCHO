@@ -8,7 +8,7 @@
   <title>PONCHO · Equipo MEDIOS DE PAGO NOA Oeste</title>
 
   <!-- En este repositorio los archivos están en la raíz. -->
-  <link rel="stylesheet" href="./style.css?v=9">
+  <link rel="stylesheet" href="./style.css?v=11">
   <link rel="manifest" href="./manifest.webmanifest">
   <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js" defer></script>
 
@@ -16,7 +16,7 @@
     /* Reemplazar por la URL /exec de la implementación de Google Apps Script. */
     window.APPS_SCRIPT_URL = "https://script.google.com/macros/s/AKfycbx66yJ8a7nSgYUzDWilfA6fktFPx1cw2XrIdjmVsZWOsktHOAKutos-KQoV_lYhnsq2/exec";
   </script>
-  <script src="./app.js?v=9" defer></script>
+  <script src="./app.js?v=11" defer></script>
 </head>
 <body>
   <div class="app-shell">
@@ -370,34 +370,61 @@
           </form>
         </div>
       </section>
-
       <!-- DASHBOARD -->
       <section class="screen module-screen module-screen-dashboard" id="screen-dashboard" aria-labelledby="titulo-dashboard">
         <div class="section-heading dashboard-heading">
           <span class="step step-icon" aria-hidden="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V10M10 20V4M16 20v-7M22 20V7"/></svg></span>
-          <div><h2 id="titulo-dashboard">Dashboard</h2><p>Información consolidada en línea.</p></div>
+          <div><h2 id="titulo-dashboard">Dashboard</h2><p>Actividad integral de Personas, Comercios y Terminales.</p></div>
           <button class="btn btn-secondary compact" id="btnRefrescarDashboard" type="button">Actualizar</button>
         </div>
 
         <div class="dashboard-status" id="dashboardStatus"></div>
-        <div class="kpis" id="kpis"></div>
+        <div class="kpis kpis-expanded" id="kpis"></div>
 
         <div class="dashboard-grid">
           <article class="card chart-card chart-wide">
-            <div class="card-heading"><h3>Registros por módulo</h3><span>Total acumulado</span></div>
-            <canvas id="chartModulos" height="150"></canvas>
+            <div class="card-heading"><h3>Ranking integral de agentes</h3><span>Personas + última gestión de comercios + terminales</span></div>
+            <canvas id="chartAgentes" height="170"></canvas>
           </article>
+
+          <article class="card ranking-card chart-wide">
+            <div class="card-heading"><h3>Detalle por agente</h3><span>Hasta 10 posiciones</span></div>
+            <div class="ranking-table-wrap">
+              <table class="ranking-table">
+                <thead><tr><th>#</th><th>Agente</th><th>Personas</th><th>Comercios</th><th>Terminales</th><th>Total</th></tr></thead>
+                <tbody id="rankingAgentesBody"></tbody>
+              </table>
+            </div>
+          </article>
+
           <article class="card chart-card chart-wide">
-            <div class="card-heading"><h3>Evolución diaria</h3><span>Últimos 14 días con actividad</span></div>
+            <div class="card-heading"><h3>Actividad diaria</h3><span>Últimos 14 días con actividad</span></div>
             <canvas id="chartDiario" height="150"></canvas>
           </article>
+
           <article class="card chart-card">
-            <div class="card-heading"><h3>Top agentes</h3><span>Hasta 5 posiciones</span></div>
-            <canvas id="chartAgentes" height="190"></canvas>
+            <div class="card-heading"><h3>Acciones de Personas</h3><span>Distribución por producto</span></div>
+            <canvas id="chartModulos" height="190"></canvas>
           </article>
+
           <article class="card chart-card">
-            <div class="card-heading"><h3>Estado de comercios</h3><span>Gestión de adhesión y señalización</span></div>
+            <div class="card-heading"><h3>Estado de comercios</h3><span>Adhesión, señalización y gestión</span></div>
             <canvas id="chartComercios" height="190"></canvas>
+          </article>
+
+          <article class="card chart-card">
+            <div class="card-heading"><h3>Agentes con gestión de comercios</h3><span>Último agente registrado por comercio</span></div>
+            <canvas id="chartAgentesComercios" height="190"></canvas>
+          </article>
+
+          <article class="card chart-card">
+            <div class="card-heading"><h3>Terminales</h3><span>Entregas y ventas registradas</span></div>
+            <canvas id="chartTerminales" height="190"></canvas>
+          </article>
+
+          <article class="card chart-card chart-wide">
+            <div class="card-heading"><h3>Sectores con mayor gestión</h3><span>Según la última gestión registrada en cada comercio</span></div>
+            <canvas id="chartSectores" height="150"></canvas>
           </article>
         </div>
       </section>
